@@ -60,16 +60,16 @@ def fetch_rainfall_chunk(chunk):
     return {}
 
 def run_bootstrap():
-    print(f"🚀 Starting Local Bootstrap script...")
+    print(f"Starting Local Bootstrap script...")
     
     # 1. Fetch all stations from backend
     try:
         res = requests.get(f"{BACKEND_URL}/stations")
         res.raise_for_status()
         stations = res.json().get("stations", [])
-        print(f"✅ Fetched {len(stations)} stations from {BACKEND_URL}")
+        print(f"[OK] Fetched {len(stations)} stations from {BACKEND_URL}")
     except Exception as e:
-        print(f"❌ Could not fetch stations from backend: {e}")
+        print(f"[FAIL] Could not fetch stations from backend: {e}")
         return
 
     # 2. Chunk stations and fetch from Open-Meteo
@@ -80,22 +80,22 @@ def run_bootstrap():
     
     for i in range(0, len(stations), chunk_size):
         chunk = stations[i:i+chunk_size]
-        print(f"🌧️ Fetching chunk {i//chunk_size + 1}/{total_chunks} from Open-Meteo...")
+        print(f"[Fetch] Fetching chunk {i//chunk_size + 1}/{total_chunks} from Open-Meteo...")
         chunk_data = fetch_rainfall_chunk(chunk)
         all_station_data.update(chunk_data)
         time.sleep(3) # Be nice to the API
         
     # 3. Post to backend
-    print(f"\n⬆️ Pushing data for {len(all_station_data)} stations to {BACKEND_URL}...")
+    print(f"\n[Push] Pushing data for {len(all_station_data)} stations to {BACKEND_URL}...")
     try:
         res = requests.post(f"{BACKEND_URL}/api/admin/sync-rainfall", json={
             "station_data": all_station_data
         })
         res.raise_for_status()
         data = res.json()
-        print(f"✅ Success! {data.get('records_inserted')} records inserted into the database.")
+        print(f"[SUCCESS] {data.get('records_inserted')} records inserted into the database.")
     except Exception as e:
-        print(f"❌ Failed to sync to backend: {e}")
+        print(f"[FAIL] Failed to sync to backend: {e}")
         if hasattr(e, 'response') and e.response is not None:
             print("Response:", e.response.text)
 
