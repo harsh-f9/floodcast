@@ -152,36 +152,52 @@ def fetch_rainfall_batch_multi(stations_coords: list[dict], start_date: str, end
     
     for i in range(0, len(stations_coords), chunk_size):
         chunk = stations_coords[i:i + chunk_size]
-        try:
-            lats = [s["latitude"] for s in chunk]
-            lons = [s["longitude"] for s in chunk]
-            
-            r = requests.get("https://api.open-meteo.com/v1/forecast", params={
-                "latitude": lats,
-                "longitude": lons,
-                "daily": "precipitation_sum",
-                "start_date": start_date,
-                "end_date": end_date,
-                "timezone": "Asia/Kolkata"
-            }, timeout=60)
-            
-            r.raise_for_status()
-            res_list = r.json()
-            
-            if isinstance(res_list, dict):
-                res_list = [res_list]
+        
+        max_retries = 5
+        base_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                lats = [s["latitude"] for s in chunk]
+                lons = [s["longitude"] for s in chunk]
                 
-            for station, data in zip(chunk, res_list):
-                daily_data = data.get("daily", {})
-                output.append({
-                    "station_id": station["station_id"],
-                    "daily": daily_data
-                })
-        except Exception as e:
-            print(f"⚠️  Chunk multi-station batch rainfall fetch failed (indices {i} to {i+chunk_size}): {e}")
+                r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+                    "latitude": lats,
+                    "longitude": lons,
+                    "daily": "precipitation_sum",
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "timezone": "Asia/Kolkata"
+                }, timeout=60)
+                
+                if r.status_code == 429:
+                    raise requests.exceptions.RequestException("429 Too Many Requests")
+                r.raise_for_status()
+                
+                res_list = r.json()
+                if isinstance(res_list, dict):
+                    res_list = [res_list]
+                    
+                for station, data in zip(chunk, res_list):
+                    daily_data = data.get("daily", {})
+                    output.append({
+                        "station_id": station["station_id"],
+                        "daily": daily_data
+                    })
+                    
+                # Success - break out of the retry loop
+                break
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"⚠️  Chunk batch fetch failed (indices {i} to {i+chunk_size}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    print(f"❌  Chunk batch fetch completely failed after {max_retries} attempts: {e}")
             
-        # Add a small delay between chunks to avoid 429 Too Many Requests
-        time.sleep(2)
+        # Add a small delay between successful chunks as well
+        time.sleep(3)
             
     return output
 
