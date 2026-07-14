@@ -1,0 +1,10 @@
+/* Heatwave Dashboard – risk row colors and table styling */
+.heatwave-row-low {
+  background-color: rgba(34, 197, 94, 0.12);
+}
+.heatwave-row-moderate {
+  background-color: rgba(234, 179, 8, 0.15);
+}
+.heatwave-row-high {
+  background-color: rgba(239, 68, 68, 0.12);
+}

@@ -1,0 +1,351 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#05080e"/>
+      <stop offset="35%" stop-color="#0a1020"/>
+      <stop offset="70%" stop-color="#101828"/>
+      <stop offset="100%" stop-color="#182030"/>
+    </linearGradient>
+    <radialGradient id="cloudCore" cx="0.5" cy="0.6" r="0.5">
+      <stop offset="0%" stop-color="#3a4050"/>
+      <stop offset="60%" stop-color="#252a35"/>
+      <stop offset="100%" stop-color="#181c25"/>
+    </radialGradient>
+    <radialGradient id="cloudDark" cx="0.5" cy="0.6" r="0.5">
+      <stop offset="0%" stop-color="#2e3340"/>
+      <stop offset="60%" stop-color="#1e222c"/>
+      <stop offset="100%" stop-color="#12151c"/>
+    </radialGradient>
+    <radialGradient id="flashGlow1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#e8e0ff" stop-opacity="0.9"/>
+      <stop offset="30%" stop-color="#b8a0ff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#6040aa" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="flashGlow2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="25%" stop-color="#c8d0ff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#4050aa" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cloudLit" cx="0.5" cy="0.7" r="0.55">
+      <stop offset="0%" stop-color="#6a6888"/>
+      <stop offset="50%" stop-color="#3a3850"/>
+      <stop offset="100%" stop-color="#1a1c28"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBig" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="glowMed" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <filter id="cloudBlur" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Night sky -->
+  <rect x="0" y="0" width="900" height="600" fill="url(#nightSky)"/>
+
+  <!-- Distant stars -->
+  <g fill="#ffffff">
+    <circle cx="50" cy="30" r="0.8" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="140" cy="55" r="0.6" opacity="0.3"/>
+    <circle cx="230" cy="18" r="0.7" opacity="0.35"><animate attributeName="opacity" values="0.35;0.1;0.35" dur="4.2s" repeatCount="indefinite"/></circle>
+    <circle cx="320" cy="42" r="0.5" opacity="0.25"/>
+    <circle cx="410" cy="12" r="0.8" opacity="0.4"><animate attributeName="opacity" values="0.4;0.05;0.4" dur="2.8s" repeatCount="indefinite"/></circle>
+    <circle cx="530" cy="35" r="0.6" opacity="0.3"/>
+    <circle cx="620" cy="22" r="0.7" opacity="0.35"><animate attributeName="opacity" values="0.35;0.08;0.35" dur="3.6s" repeatCount="indefinite"/></circle>
+    <circle cx="710" cy="48" r="0.5" opacity="0.25"/>
+    <circle cx="790" cy="15" r="0.8" opacity="0.3"><animate attributeName="opacity" values="0.3;0.05;0.3" dur="5s" repeatCount="indefinite"/></circle>
+    <circle cx="860" cy="60" r="0.6" opacity="0.2"/>
+    <circle cx="100" cy="80" r="0.5" opacity="0.2"/>
+    <circle cx="480" cy="70" r="0.7" opacity="0.25"><animate attributeName="opacity" values="0.25;0.05;0.25" dur="4.5s" repeatCount="indefinite"/></circle>
+    <circle cx="750" cy="85" r="0.5" opacity="0.2"/>
+  </g>
+
+  <!-- Ground silhouette -->
+  <path d="M0,540 Q50,530 100,535 Q180,528 250,532 Q320,525 400,530 Q480,522 550,528 Q630,520 700,526 Q780,518 850,524 Q880,520 900,522 L900,600 L0,600Z" fill="#080c14"/>
+  <!-- City silhouette -->
+  <g fill="#0a0e18">
+    <rect x="80" y="500" width="30" height="40"/>
+    <rect x="115" y="490" width="40" height="50"/>
+    <rect x="160" y="510" width="25" height="30"/>
+    <rect x="300" y="495" width="35" height="45"/>
+    <rect x="340" y="505" width="28" height="35"/>
+    <rect x="520" y="498" width="32" height="42"/>
+    <rect x="558" y="510" width="22" height="30"/>
+    <rect x="700" y="492" width="38" height="48"/>
+    <rect x="742" y="505" width="26" height="35"/>
+    <rect x="820" y="500" width="30" height="40"/>
+  </g>
+  <!-- Tiny windows -->
+  <g fill="#1a1e30" opacity="0.4">
+    <rect x="90" y="510" width="4" height="5"/><rect x="100" y="510" width="4" height="5"/>
+    <rect x="125" y="498" width="5" height="6"/><rect x="138" y="498" width="5" height="6"/>
+    <rect x="310" y="505" width="4" height="5"/><rect x="322" y="505" width="4" height="5"/>
+    <rect x="530" y="508" width="4" height="5"/><rect x="540" y="508" width="4" height="5"/>
+    <rect x="710" y="502" width="5" height="6"/><rect x="724" y="502" width="5" height="6"/>
+  </g>
+
+  <!-- ============ LEFT CLOUD MASS (moves right) ============ -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="-40,0; 40,0; -40,0" dur="8s" repeatCount="indefinite"/>
+    <!-- Main body -->
+    <ellipse cx="250" cy="200" rx="130" ry="55" fill="url(#cloudCore)" filter="url(#cloudBlur)"/>
+    <ellipse cx="200" cy="210" rx="90" ry="50" fill="url(#cloudDark)"/>
+    <ellipse cx="310" cy="195" rx="80" ry="45" fill="url(#cloudDark)"/>
+    <ellipse cx="250" cy="180" rx="100" ry="40" fill="url(#cloudCore)"/>
+    <ellipse cx="170" cy="195" rx="65" ry="38" fill="#222835"/>
+    <ellipse cx="330" cy="205" rx="60" ry="35" fill="#1e2230"/>
+    <!-- Bottom billows -->
+    <ellipse cx="220" cy="230" rx="70" ry="30" fill="#1a1e28" filter="url(#cloudBlur)"/>
+    <ellipse cx="280" cy="235" rx="65" ry="28" fill="#161922"/>
+    <!-- Top billows -->
+    <ellipse cx="230" cy="170" rx="55" ry="25" fill="#2a2e3a"/>
+    <ellipse cx="280" cy="168" rx="50" ry="22" fill="#242838"/>
+    <!-- Cloud lit edge (facing collision) -->
+    <ellipse cx="340" cy="200" rx="40" ry="30" fill="url(#cloudLit)" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- Internal cloud glow -->
+    <ellipse cx="280" cy="200" rx="60" ry="35" fill="#5050aa" opacity="0" filter="url(#glowMed)">
+      <animate attributeName="opacity" values="0;0;0;0.35;0;0;0;0;0.25;0" dur="6s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- ============ RIGHT CLOUD MASS (moves left) ============ -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="40,0; -40,0; 40,0" dur="8s" repeatCount="indefinite"/>
+    <!-- Main body -->
+    <ellipse cx="650" cy="190" rx="140" ry="58" fill="url(#cloudCore)" filter="url(#cloudBlur)"/>
+    <ellipse cx="700" cy="200" rx="95" ry="52" fill="url(#cloudDark)"/>
+    <ellipse cx="590" cy="185" rx="85" ry="48" fill="url(#cloudDark)"/>
+    <ellipse cx="650" cy="170" rx="110" ry="42" fill="url(#cloudCore)"/>
+    <ellipse cx="730" cy="190" rx="70" ry="40" fill="#222835"/>
+    <ellipse cx="570" cy="195" rx="60" ry="36" fill="#1e2230"/>
+    <!-- Bottom billows -->
+    <ellipse cx="680" cy="225" rx="75" ry="32" fill="#1a1e28" filter="url(#cloudBlur)"/>
+    <ellipse cx="620" cy="228" rx="68" ry="28" fill="#16192a"/>
+    <!-- Top billows -->
+    <ellipse cx="670" cy="162" rx="58" ry="26" fill="#2a2e3a"/>
+    <ellipse cx="620" cy="160" rx="52" ry="24" fill="#242838"/>
+    <!-- Cloud lit edge -->
+    <ellipse cx="560" cy="195" rx="42" ry="32" fill="url(#cloudLit)" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- Internal glow -->
+    <ellipse cx="620" cy="195" rx="65" ry="38" fill="#5050aa" opacity="0" filter="url(#glowMed)">
+      <animate attributeName="opacity" values="0;0;0.3;0;0;0;0;0.4;0;0" dur="6s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- ============ TOP CLOUD ============ -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,-10; 0,15; 0,-10" dur="10s" repeatCount="indefinite"/>
+    <ellipse cx="450" cy="100" rx="120" ry="45" fill="url(#cloudDark)" filter="url(#cloudBlur)"/>
+    <ellipse cx="420" cy="95" rx="80" ry="35" fill="#1e222e"/>
+    <ellipse cx="490" cy="105" rx="75" ry="32" fill="#1a1e28"/>
+    <ellipse cx="450" cy="85" rx="90" ry="28" fill="#252a38"/>
+    <ellipse cx="450" cy="115" rx="85" ry="25" fill="#151822"/>
+    <!-- Internal glow -->
+    <ellipse cx="450" cy="100" rx="55" ry="30" fill="#6060bb" opacity="0" filter="url(#glowMed)">
+      <animate attributeName="opacity" values="0;0;0;0;0.3;0;0;0.2;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- ============ SMALL SIDE CLOUDS ============ -->
+  <g opacity="0.7">
+    <ellipse cx="60" cy="150" rx="70" ry="30" fill="#1a1e28" filter="url(#cloudBlur)"/>
+    <ellipse cx="40" cy="145" rx="50" ry="22" fill="#16192a"/>
+    <ellipse cx="850" cy="140" rx="65" ry="28" fill="#1a1e28" filter="url(#cloudBlur)"/>
+    <ellipse cx="870" cy="135" rx="48" ry="22" fill="#16192a"/>
+  </g>
+
+  <!-- ============ LIGHTNING BOLT 1 - Main center bolt ============ -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;1;0.6;1;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+    <!-- Bolt glow -->
+    <path d="M450,220 L442,265 L456,270 L435,320 L452,325 L425,395 L448,340 L432,335 L455,285 L440,280 L460,235 Z"
+          fill="#c0b8ff" filter="url(#glowBig)" opacity="0.6"/>
+    <!-- Bolt body -->
+    <path d="M450,220 L442,265 L456,270 L435,320 L452,325 L425,395 L448,340 L432,335 L455,285 L440,280 L460,235 Z"
+          fill="#f0eaff" filter="url(#glow)"/>
+    <!-- Bolt core -->
+    <path d="M450,225 L444,262 L454,266 L438,316 L450,320 L430,385 L446,335 L436,332 L452,280 L443,277 L457,238 Z"
+          fill="#ffffff"/>
+    <!-- Branch 1 -->
+    <path d="M442,265 L410,290 L395,310" stroke="#d0c8ff" stroke-width="2" fill="none" filter="url(#glow)"/>
+    <path d="M442,265 L410,290 L395,310" stroke="#ffffff" stroke-width="1" fill="none"/>
+    <!-- Branch 2 -->
+    <path d="M452,325 L480,350 L500,365" stroke="#d0c8ff" stroke-width="2" fill="none" filter="url(#glow)"/>
+    <path d="M452,325 L480,350 L500,365" stroke="#ffffff" stroke-width="1" fill="none"/>
+    <!-- Branch 3 -->
+    <path d="M435,320 L408,338 L390,355" stroke="#c8c0ee" stroke-width="1.5" fill="none" filter="url(#softBlur)"/>
+  </g>
+
+  <!-- Flash illumination for bolt 1 -->
+  <rect x="0" y="0" width="900" height="600" fill="#c0b8ff" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0.15;0.05;0.12;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- ============ LIGHTNING BOLT 2 - Left cloud-to-cloud ============ -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;1;0.5;0.9;0;0;0;0;0;0;0;0" dur="8s" repeatCount="indefinite"/>
+    <!-- Glow -->
+    <path d="M310,185 L340,178 L365,190 L395,175 L420,188 L445,172 L470,185 L505,178 L540,190 L570,180"
+          stroke="#a8a0ee" stroke-width="10" fill="none" filter="url(#glowBig)" opacity="0.5"/>
+    <!-- Bolt -->
+    <path d="M310,185 L340,178 L365,190 L395,175 L420,188 L445,172 L470,185 L505,178 L540,190 L570,180"
+          stroke="#e8e0ff" stroke-width="3" fill="none" filter="url(#glow)"/>
+    <!-- Core -->
+    <path d="M312,185 L340,179 L364,189 L395,176 L420,187 L445,173 L470,184 L505,179 L540,189 L568,181"
+          stroke="#ffffff" stroke-width="1.5" fill="none"/>
+    <!-- Small branches -->
+    <path d="M365,190 L372,210 L380,225" stroke="#d0c8ff" stroke-width="1.5" fill="none" filter="url(#softBlur)"/>
+    <path d="M470,185 L478,205 L472,220" stroke="#d0c8ff" stroke-width="1.5" fill="none" filter="url(#softBlur)"/>
+  </g>
+
+  <!-- Flash for bolt 2 -->
+  <rect x="0" y="0" width="900" height="600" fill="#b0a8ee" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0.12;0.03;0.1;0;0;0;0;0;0;0;0" dur="8s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- ============ LIGHTNING BOLT 3 - Right side to ground ============ -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;0;0;1;0.4;0.8;0;0;0;0;0;0;0" dur="10s" repeatCount="indefinite"/>
+    <!-- Glow -->
+    <path d="M680,210 L672,250 L688,258 L665,305 L682,312 L660,370 L675,378 L648,440 L655,500"
+          stroke="#a8b0ff" stroke-width="8" fill="none" filter="url(#glowBig)" opacity="0.5"/>
+    <!-- Bolt body -->
+    <path d="M680,210 L672,250 L688,258 L665,305 L682,312 L660,370 L675,378 L648,440 L655,500"
+          stroke="#e0e0ff" stroke-width="3.5" fill="none" filter="url(#glow)"/>
+    <!-- Core -->
+    <path d="M680,212 L673,248 L686,255 L667,302 L680,309 L662,368 L673,375 L650,438 L656,498"
+          stroke="#ffffff" stroke-width="1.5" fill="none"/>
+    <!-- Branches -->
+    <path d="M672,250 L645,270 L630,285" stroke="#c8c0ff" stroke-width="1.8" fill="none" filter="url(#softBlur)"/>
+    <path d="M682,312 L710,330 L725,352" stroke="#c8c0ff" stroke-width="1.5" fill="none" filter="url(#softBlur)"/>
+    <path d="M660,370 L635,388 L620,400" stroke="#c0b8ee" stroke-width="1.2" fill="none" filter="url(#softBlur)"/>
+    <!-- Ground impact glow -->
+    <ellipse cx="655" cy="500" rx="40" ry="10" fill="url(#flashGlow2)" filter="url(#glowBig)" opacity="0.7"/>
+  </g>
+
+  <!-- Flash for bolt 3 -->
+  <rect x="0" y="0" width="900" height="600" fill="#b0b8ff" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;0;0;0.14;0.04;0.10;0;0;0;0;0;0;0" dur="10s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- ============ LIGHTNING BOLT 4 - Left side small ============ -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;1;0.3;0.7;0;0;0;0;0;0;0" dur="7s" repeatCount="indefinite"/>
+    <path d="M200,205 L195,245 L208,250 L190,300 L205,308 L185,380"
+          stroke="#a0a8ee" stroke-width="6" fill="none" filter="url(#glowBig)" opacity="0.4"/>
+    <path d="M200,205 L195,245 L208,250 L190,300 L205,308 L185,380"
+          stroke="#e0d8ff" stroke-width="2.5" fill="none" filter="url(#glow)"/>
+    <path d="M200,207 L196,243 L206,248 L192,298 L203,305 L187,378"
+          stroke="#ffffff" stroke-width="1.2" fill="none"/>
+    <path d="M195,245 L172,260 L160,278" stroke="#c0b8ee" stroke-width="1.2" fill="none" filter="url(#softBlur)"/>
+  </g>
+
+  <!-- Flash for bolt 4 -->
+  <rect x="0" y="0" width="900" height="600" fill="#a0a8ee" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0.10;0.02;0.07;0;0;0;0;0;0;0" dur="7s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- ============ LIGHTNING BOLT 5 - Thin cloud-to-cloud top ============ -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;1;0.3;0;0;0;0;0;0;0;0;0;0;0;0;0;0;1;0.5;0;0;0" dur="9s" repeatCount="indefinite"/>
+    <path d="M350,160 L380,152 L410,165 L440,148 L465,158 L500,145 L530,155 L560,148"
+          stroke="#b8b0ff" stroke-width="6" fill="none" filter="url(#glowBig)" opacity="0.4"/>
+    <path d="M350,160 L380,152 L410,165 L440,148 L465,158 L500,145 L530,155 L560,148"
+          stroke="#e8e4ff" stroke-width="2" fill="none" filter="url(#glow)"/>
+    <path d="M351,160 L380,153 L409,164 L440,149 L465,157 L500,146 L530,154 L559,149"
+          stroke="#ffffff" stroke-width="1" fill="none"/>
+  </g>
+
+  <!-- ============ COLLISION FLASH EFFECTS ============ -->
+  <!-- Central collision glow between clouds -->
+  <ellipse cx="450" cy="195" rx="80" ry="50" fill="url(#flashGlow1)" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0.5;0.15;0.4;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="450" cy="195" rx="50" ry="30" fill="url(#flashGlow2)" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0.7;0.2;0.6;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Secondary collision glow -->
+  <ellipse cx="450" cy="190" rx="120" ry="70" fill="#8080cc" opacity="0" filter="url(#glowBig)">
+    <animate attributeName="opacity" values="0;0;0;0;0.12;0.03;0.08;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Cloud illumination during flashes - left cloud -->
+  <ellipse cx="300" cy="200" rx="120" ry="55" fill="#4a4878" opacity="0" filter="url(#glowMed)">
+    <animate attributeName="opacity" values="0;0;0;0;0.25;0.08;0.2;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Cloud illumination - right cloud -->
+  <ellipse cx="620" cy="195" rx="130" ry="58" fill="#4a4878" opacity="0" filter="url(#glowMed)">
+    <animate attributeName="opacity" values="0;0;0;0;0.25;0.08;0.2;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Rumble effect - slight cloud edges lit during all bolts -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0.15;0;0;0.1;0;0;0;0.12;0;0" dur="4s" repeatCount="indefinite"/>
+    <ellipse cx="250" cy="210" rx="110" ry="48" fill="#3a3860" filter="url(#glowMed)"/>
+    <ellipse cx="650" cy="200" rx="115" ry="50" fill="#3a3860" filter="url(#glowMed)"/>
+    <ellipse cx="450" cy="100" rx="95" ry="38" fill="#3a3860" filter="url(#glowMed)"/>
+  </g>
+
+  <!-- ============ GROUND REFLECTIONS ============ -->
+  <!-- Lightning reflection on ground/buildings -->
+  <rect x="0" y="500" width="900" height="100" fill="#8080cc" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0.06;0.02;0.05;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="0" y="500" width="900" height="100" fill="#7878bb" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;0;0;0;0;0;0.05;0.015;0.04;0;0;0;0;0;0;0" dur="10s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Window reflections during flash -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0.6;0.15;0.5;0;0;0;0;0;0;0;0;0;0;0" dur="6s" repeatCount="indefinite"/>
+    <rect x="90" y="510" width="4" height="5" fill="#c0b8ff"/>
+    <rect x="100" y="510" width="4" height="5" fill="#c0b8ff"/>
+    <rect x="125" y="498" width="5" height="6" fill="#c0b8ff"/>
+    <rect x="138" y="498" width="5" height="6" fill="#c0b8ff"/>
+    <rect x="310" y="505" width="4" height="5" fill="#c0b8ff"/>
+    <rect x="530" y="508" width="4" height="5" fill="#c0b8ff"/>
+    <rect x="540" y="508" width="4" height="5" fill="#c0b8ff"/>
+    <rect x="710" y="502" width="5" height="6" fill="#c0b8ff"/>
+    <rect x="724" y="502" width="5" height="6" fill="#c0b8ff"/>
+  </g>
+
+  <!-- ============ RAIN STREAKS ============ -->
+  <g stroke="#4a5a7a" stroke-width="0.8" opacity="0.15">
+    <line x1="50" y1="250" x2="44" y2="310"><animate attributeName="y1" values="-20;620" dur="1.8s" repeatCount="indefinite"/><animate attributeName="y2" values="40;680" dur="1.8s" repeatCount="indefinite"/></line>
+    <line x1="150" y1="250" x2="144" y2="310"><animate attributeName="y1" values="-40;620" dur="1.6s" repeatCount="indefinite"/><animate attributeName="y2" values="20;680" dur="1.6s" repeatCount="indefinite"/></line>
+    <line x1="250" y1="250" x2="244" y2="310"><animate attributeName="y1" values="-60;620" dur="2s" repeatCount="indefinite"/><animate attributeName="y2" values="0;680" dur="2s" repeatCount="indefinite"/></line>
+    <line x1="350" y1="250" x2="344" y2="310"><animate attributeName="y1" values="-30;620" dur="1.7s" repeatCount="indefinite"/><animate attributeName="y2" values="30;680" dur="1.7s" repeatCount="indefinite"/></line>
+    <line x1="450" y1="250" x2="444" y2="310"><animate attributeName="y1" values="-50;620" dur="1.9s" repeatCount="indefinite"/><animate attributeName="y2" values="10;680" dur="1.9s" repeatCount="indefinite"/></line>
+    <line x1="550" y1="250" x2="544" y2="310"><animate attributeName="y1" values="-10;620" dur="1.5s" repeatCount="indefinite"/><animate attributeName="y2" values="50;680" dur="1.5s" repeatCount="indefinite"/></line>
+    <line x1="650" y1="250" x2="644" y2="310"><animate attributeName="y1" values="-70;620" dur="2.1s" repeatCount="indefinite"/><animate attributeName="y2" values="-10;680" dur="2.1s" repeatCount="indefinite"/></line>
+    <line x1="750" y1="250" x2="744" y2="310"><animate attributeName="y1" values="-25;620" dur="1.65s" repeatCount="indefinite"/><animate attributeName="y2" values="35;680" dur="1.65s" repeatCount="indefinite"/></line>
+    <line x1="850" y1="250" x2="844" y2="310"><animate attributeName="y1" values="-45;620" dur="1.85s" repeatCount="indefinite"/><animate attributeName="y2" values="15;680" dur="1.85s" repeatCount="indefinite"/></line>
+    <line x1="100" y1="250" x2="94" y2="310"><animate attributeName="y1" values="-55;620" dur="2.05s" repeatCount="indefinite"/><animate attributeName="y2" values="5;680" dur="2.05s" repeatCount="indefinite"/></line>
+    <line x1="400" y1="250" x2="394" y2="310"><animate attributeName="y1" values="-15;620" dur="1.55s" repeatCount="indefinite"/><animate attributeName="y2" values="45;680" dur="1.55s" repeatCount="indefinite"/></line>
+    <line x1="600" y1="250" x2="594" y2="310"><animate attributeName="y1" values="-35;620" dur="1.75s" repeatCount="indefinite"/><animate attributeName="y2" values="25;680" dur="1.75s" repeatCount="indefinite"/></line>
+    <line x1="800" y1="250" x2="794" y2="310"><animate attributeName="y1" values="-65;620" dur="1.95s" repeatCount="indefinite"/><animate attributeName="y2" values="-5;680" dur="1.95s" repeatCount="indefinite"/></line>
+  </g>
+
+  <!-- Atmospheric dark vignette -->
+  <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.7">
+    <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="70%" stop-color="#000000" stop-opacity="0.1"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+  </radialGradient>
+  <rect x="0" y="0" width="900" height="600" fill="url(#vignette)"/>
+</svg>

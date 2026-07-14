@@ -1,0 +1,3782 @@
+[
+  {
+    "gauge_id": "hybas_4120789590",
+    "latitude": 29.252083,
+    "longitude": 78.66875,
+    "location_name": "Afzalgarh",
+    "sub_district": "Afzalgarh",
+    "district": "Bijnor",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120790870",
+    "latitude": 29.214583,
+    "longitude": 78.097917,
+    "location_name": "Northern Railway",
+    "sub_district": "Mawana tehsil",
+    "district": "Meerut",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120792550",
+    "latitude": 29.16875,
+    "longitude": 78.68125,
+    "location_name": "Kanth tehsil",
+    "sub_district": "Kanth tehsil",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120792960",
+    "latitude": 29.15625,
+    "longitude": 78.077083,
+    "location_name": "Northern Railway",
+    "sub_district": "Mawana tehsil",
+    "district": "Meerut",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120794740",
+    "latitude": 29.102083,
+    "longitude": 77.139583,
+    "location_name": "Northern Railway",
+    "sub_district": "Baraut tehsil",
+    "district": "Bagpat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120797070",
+    "latitude": 29.03125,
+    "longitude": 78.077083,
+    "location_name": "Northern Railway",
+    "sub_district": "Dhanaura tehsil",
+    "district": "Amroha",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120799420",
+    "latitude": 28.960417,
+    "longitude": 77.197917,
+    "location_name": "Northern Railway",
+    "sub_district": "Baghpat tehsil",
+    "district": "Bagpat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120801290",
+    "latitude": 28.90625,
+    "longitude": 78.102083,
+    "location_name": "Northern Railway",
+    "sub_district": "Mawana tehsil",
+    "district": "Meerut",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120802470",
+    "latitude": 28.86875,
+    "longitude": 78.772917,
+    "location_name": "Northern Railway",
+    "sub_district": "Moradabad tehsil",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120802730",
+    "latitude": 28.860417,
+    "longitude": 77.214583,
+    "location_name": "Northern Railway",
+    "sub_district": "Khekada tehsil",
+    "district": "Bagpat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120804940",
+    "latitude": 28.79375,
+    "longitude": 78.989583,
+    "location_name": "Northern Railway",
+    "sub_district": "Rampur",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120805570",
+    "latitude": 28.777083,
+    "longitude": 80.122917,
+    "location_name": "Puranpur tehsil",
+    "sub_district": "Puranpur tehsil",
+    "district": "Pilibhit",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120806050",
+    "latitude": 28.764583,
+    "longitude": 78.839583,
+    "location_name": "Northern Railway",
+    "sub_district": "Moradabad tehsil",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120806240",
+    "latitude": 28.760417,
+    "longitude": 78.947917,
+    "location_name": "Northern Railway",
+    "sub_district": "Moradabad tehsil",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120807330",
+    "latitude": 28.727083,
+    "longitude": 80.185417,
+    "location_name": "Puranpur tehsil",
+    "sub_district": "Puranpur tehsil",
+    "district": "Pilibhit",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120808810",
+    "latitude": 28.677083,
+    "longitude": 78.947917,
+    "location_name": "Northern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Rampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120808990",
+    "latitude": 28.672917,
+    "longitude": 78.952083,
+    "location_name": "Northern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Rampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120809150",
+    "latitude": 28.66875,
+    "longitude": 78.947917,
+    "location_name": "Northern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Rampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120813270",
+    "latitude": 28.539583,
+    "longitude": 78.20625,
+    "location_name": "Northern Railway",
+    "sub_district": "Siyana Tehsil",
+    "district": "Bulandshahr",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120814570",
+    "latitude": 28.497917,
+    "longitude": 79.264583,
+    "location_name": "Northern Railway",
+    "sub_district": "Meerganj tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120815080",
+    "latitude": 28.48125,
+    "longitude": 79.16875,
+    "location_name": "Northern Railway",
+    "sub_district": "Meerganj tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120816480",
+    "latitude": 28.43125,
+    "longitude": 77.45625,
+    "location_name": "Northern Railway",
+    "sub_district": "Gautam Buddha Nagar tehsil",
+    "district": "Gautam Buddh Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120816920",
+    "latitude": 28.414583,
+    "longitude": 79.264583,
+    "location_name": "Northern Railway",
+    "sub_district": "Meerganj tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120817040",
+    "latitude": 28.410417,
+    "longitude": 79.264583,
+    "location_name": "Northern Railway",
+    "sub_district": "Meerganj tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120818090",
+    "latitude": 28.377083,
+    "longitude": 77.489583,
+    "location_name": "Northern Zonal Council",
+    "sub_district": "Ballabgarh tehsil",
+    "district": "Faridabad",
+    "state": "Haryana",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120818110",
+    "latitude": 28.377083,
+    "longitude": 79.347917,
+    "location_name": "Northern Railway",
+    "sub_district": "Bareilly tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120818320",
+    "latitude": 28.372917,
+    "longitude": 79.339583,
+    "location_name": "Northern Railway",
+    "sub_district": "Bareilly tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120820970",
+    "latitude": 28.289583,
+    "longitude": 81.08125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120820980",
+    "latitude": 28.289583,
+    "longitude": 81.089583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120821760",
+    "latitude": 28.264583,
+    "longitude": 81.072917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nighasan",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120822480",
+    "latitude": 28.247917,
+    "longitude": 81.064583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nighasan",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120822760",
+    "latitude": 28.239583,
+    "longitude": 80.714583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Gola Gokaran Nath tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120822850",
+    "latitude": 28.235417,
+    "longitude": 79.410417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bareilly tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120825510",
+    "latitude": 28.152083,
+    "longitude": 79.464583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Faridpur tehsil",
+    "district": "Bareilly",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120828050",
+    "latitude": 28.064583,
+    "longitude": 81.172917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120828180",
+    "latitude": 28.060417,
+    "longitude": 80.997917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120828430",
+    "latitude": 28.052083,
+    "longitude": 81.414583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120828770",
+    "latitude": 28.039583,
+    "longitude": 81.43125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120829610",
+    "latitude": 28.010417,
+    "longitude": 81.439583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120829920",
+    "latitude": 28.002083,
+    "longitude": 79.472917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dataganj tehsil",
+    "district": "Budaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120830340",
+    "latitude": 27.985417,
+    "longitude": 79.822917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Tilhar tehsil",
+    "district": "Shahjahanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120831070",
+    "latitude": 27.960417,
+    "longitude": 81.427083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nanpara tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120831410",
+    "latitude": 27.947917,
+    "longitude": 80.985417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Lakhimpur tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120831810",
+    "latitude": 27.93125,
+    "longitude": 78.852083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Budaun tehsil",
+    "district": "Budaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120831930",
+    "latitude": 27.927083,
+    "longitude": 79.422917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dataganj tehsil",
+    "district": "Budaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120832490",
+    "latitude": 27.897917,
+    "longitude": 77.527083,
+    "location_name": "North Central Railway",
+    "sub_district": "Chhata Tehsil",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120833210",
+    "latitude": 27.872917,
+    "longitude": 81.26875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120833920",
+    "latitude": 27.847917,
+    "longitude": 78.952083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Patiyali tehsil",
+    "district": "Kasganj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120834290",
+    "latitude": 27.839583,
+    "longitude": 79.90625,
+    "location_name": "Northern Railway",
+    "sub_district": "Shahjahanpur tehsil",
+    "district": "Shahjahanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120834310",
+    "latitude": 27.839583,
+    "longitude": 81.822917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bhinga tehsil",
+    "district": "Shravasti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120835230",
+    "latitude": 27.810417,
+    "longitude": 77.689583,
+    "location_name": "North Central Railway",
+    "sub_district": "Mat",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120835250",
+    "latitude": 27.810417,
+    "longitude": 79.152083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dataganj tehsil",
+    "district": "Budaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120836020",
+    "latitude": 27.789583,
+    "longitude": 81.164583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120836030",
+    "latitude": 27.789583,
+    "longitude": 81.78125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bhinga tehsil",
+    "district": "Shravasti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120839390",
+    "latitude": 27.702083,
+    "longitude": 79.885417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120839770",
+    "latitude": 27.689583,
+    "longitude": 79.597917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Jalalabad tehsil",
+    "district": "Shahjahanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120839990",
+    "latitude": 27.685417,
+    "longitude": 81.277083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120840120",
+    "latitude": 27.68125,
+    "longitude": 81.272917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Biswan tehsil",
+    "district": "Sitapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120840260",
+    "latitude": 27.677083,
+    "longitude": 81.28125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Mahasi tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120840940",
+    "latitude": 27.652083,
+    "longitude": 79.34375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kaimganj Tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120841490",
+    "latitude": 27.63125,
+    "longitude": 81.860417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ikauna tehsil",
+    "district": "Shravasti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120842230",
+    "latitude": 27.602083,
+    "longitude": 77.68125,
+    "location_name": "North Central Railway",
+    "sub_district": "Mat",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120842800",
+    "latitude": 27.577083,
+    "longitude": 81.964583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ikauna tehsil",
+    "district": "Shravasti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120844080",
+    "latitude": 27.539583,
+    "longitude": 79.539583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kaimganj Tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120845070",
+    "latitude": 27.502083,
+    "longitude": 79.577083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Amritpur tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120845160",
+    "latitude": 27.497917,
+    "longitude": 79.897917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120845220",
+    "latitude": 27.49375,
+    "longitude": 79.70625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Jalalabad tehsil",
+    "district": "Shahjahanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120846880",
+    "latitude": 27.44375,
+    "longitude": 79.614583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Amritpur tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120846890",
+    "latitude": 27.44375,
+    "longitude": 82.227083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Balrampur tehsil",
+    "district": "Balrampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120847290",
+    "latitude": 27.43125,
+    "longitude": 77.714583,
+    "location_name": "North Central Railway",
+    "sub_district": "Mahavan Tehsil",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120848560",
+    "latitude": 27.389583,
+    "longitude": 81.402083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Mahasi tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120850350",
+    "latitude": 27.339583,
+    "longitude": 79.947917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120852030",
+    "latitude": 27.29375,
+    "longitude": 79.647917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Farrukhabad tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120853790",
+    "latitude": 27.24375,
+    "longitude": 83.86875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Padrauna tehsil",
+    "district": "Kushinagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120855310",
+    "latitude": 27.197917,
+    "longitude": 78.077083,
+    "location_name": "North Central Railway",
+    "sub_district": "Agra Tehsil",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120855330",
+    "latitude": 27.197917,
+    "longitude": 82.885417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bansi tehsil",
+    "district": "Siddharthnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120855780",
+    "latitude": 27.18125,
+    "longitude": 79.84375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120856220",
+    "latitude": 27.16875,
+    "longitude": 79.914583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120856670",
+    "latitude": 27.15625,
+    "longitude": 79.910417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120856680",
+    "latitude": 27.15625,
+    "longitude": 83.03125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bansi tehsil",
+    "district": "Siddharthnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120856790",
+    "latitude": 27.152083,
+    "longitude": 79.90625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120856800",
+    "latitude": 27.152083,
+    "longitude": 83.027083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bansi tehsil",
+    "district": "Siddharthnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120857010",
+    "latitude": 27.14375,
+    "longitude": 79.93125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kannauj",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120857030",
+    "latitude": 27.14375,
+    "longitude": 81.460417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kaiserganj tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120857750",
+    "latitude": 27.11875,
+    "longitude": 78.202083,
+    "location_name": "North Central Railway",
+    "sub_district": "Tundla",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120859620",
+    "latitude": 27.052083,
+    "longitude": 83.202083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Campierganj tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120859810",
+    "latitude": 27.047917,
+    "longitude": 83.197917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Campierganj tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120860680",
+    "latitude": 27.027083,
+    "longitude": 80.83125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bakshi Ka Talab tehsil",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120861710",
+    "latitude": 26.985417,
+    "longitude": 78.452083,
+    "location_name": "North Central Railway",
+    "sub_district": "Firozabad tehsil",
+    "district": "Firozabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120862130",
+    "latitude": 26.972917,
+    "longitude": 81.65625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ramsanehighat tehsil",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120862490",
+    "latitude": 26.964583,
+    "longitude": 80.83125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bakshi Ka Talab tehsil",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120863280",
+    "latitude": 26.94375,
+    "longitude": 80.847917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bakshi Ka Talab tehsil",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120864240",
+    "latitude": 26.910417,
+    "longitude": 78.622917,
+    "location_name": "North Central Railway",
+    "sub_district": "Bah tehsil",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120865130",
+    "latitude": 26.885417,
+    "longitude": 80.902083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Lucknow",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120865790",
+    "latitude": 26.85625,
+    "longitude": 81.76875,
+    "location_name": "Northern Railway",
+    "sub_district": "Rudauli tehsil",
+    "district": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120865920",
+    "latitude": 26.852083,
+    "longitude": 83.235417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sahjanwa tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120866090",
+    "latitude": 26.84375,
+    "longitude": 80.122917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bilhaur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120866750",
+    "latitude": 26.814583,
+    "longitude": 81.88125,
+    "location_name": "Northern Railway",
+    "sub_district": "Sohawal tehsil",
+    "district": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120866980",
+    "latitude": 26.80625,
+    "longitude": 82.14375,
+    "location_name": "Northern Railway",
+    "sub_district": "Sohawal tehsil",
+    "district": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120867450",
+    "latitude": 26.79375,
+    "longitude": 82.06875,
+    "location_name": "Northern Railway",
+    "sub_district": "Sohawal tehsil",
+    "district": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120867990",
+    "latitude": 26.772917,
+    "longitude": 81.185417,
+    "location_name": "Northern Railway",
+    "sub_district": "Mohanlalganj tehsil",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120868460",
+    "latitude": 26.760417,
+    "longitude": 83.33125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sahjanwa",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120868750",
+    "latitude": 26.752083,
+    "longitude": 83.327083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Gorakhpur tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120868960",
+    "latitude": 26.74375,
+    "longitude": 81.202083,
+    "location_name": "Northern Railway",
+    "sub_district": "Mohanlalganj tehsil",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120870440",
+    "latitude": 26.697917,
+    "longitude": 81.28125,
+    "location_name": "Northern Railway",
+    "sub_district": "Haidergarh tehsil",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120870650",
+    "latitude": 26.689583,
+    "longitude": 81.56875,
+    "location_name": "Northern Railway",
+    "sub_district": "Haidergarh tehsil",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120871310",
+    "latitude": 26.660417,
+    "longitude": 82.397917,
+    "location_name": "Northern Railway",
+    "sub_district": "Harraiya tehsil",
+    "district": "Basti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120871820",
+    "latitude": 26.639583,
+    "longitude": 80.26875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120872640",
+    "latitude": 26.610417,
+    "longitude": 80.277083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120873800",
+    "latitude": 26.58125,
+    "longitude": 80.277083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120874100",
+    "latitude": 26.572917,
+    "longitude": 80.285417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120874590",
+    "latitude": 26.560417,
+    "longitude": 82.672917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Tanda tehsil",
+    "district": "Ambedkar Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120874710",
+    "latitude": 26.55625,
+    "longitude": 83.44375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Chauri Chaura tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120876680",
+    "latitude": 26.49375,
+    "longitude": 79.252083,
+    "location_name": "North Central Railway",
+    "sub_district": "Chakarnagar",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120876840",
+    "latitude": 26.489583,
+    "longitude": 79.252083,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Chakarnagar",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120878590",
+    "latitude": 26.435417,
+    "longitude": 81.822917,
+    "location_name": "Northern Railway",
+    "sub_district": "Baldirai",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120878820",
+    "latitude": 26.427083,
+    "longitude": 79.177083,
+    "location_name": "North Central Railway",
+    "sub_district": "Madhogarh tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120879890",
+    "latitude": 26.39375,
+    "longitude": 83.08125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Annapur",
+    "district": "Ambedkar Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120880810",
+    "latitude": 26.372917,
+    "longitude": 82.00625,
+    "location_name": "Northern Railway",
+    "sub_district": "Sultanpur tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120881060",
+    "latitude": 26.364583,
+    "longitude": 83.602083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Rudrapur tehsil",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120881320",
+    "latitude": 26.35625,
+    "longitude": 83.310417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Gola tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120883140",
+    "latitude": 26.297917,
+    "longitude": 83.397917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Gola tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120883570",
+    "latitude": 26.285417,
+    "longitude": 83.672917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Barhaj",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120883690",
+    "latitude": 26.28125,
+    "longitude": 83.672917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Barhaj",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120883800",
+    "latitude": 26.277083,
+    "longitude": 83.51875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ghosi",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120884240",
+    "latitude": 26.260417,
+    "longitude": 83.764583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Barhaj",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120884830",
+    "latitude": 26.239583,
+    "longitude": 80.572917,
+    "location_name": "North Central Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120885490",
+    "latitude": 26.21875,
+    "longitude": 80.60625,
+    "location_name": "North Central Railway",
+    "sub_district": "Bighapur Khurd",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120886430",
+    "latitude": 26.19375,
+    "longitude": 79.702083,
+    "location_name": "North Central Railway",
+    "sub_district": "Bhognipur tehsil",
+    "district": "Kanpur Dehat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120886450",
+    "latitude": 26.19375,
+    "longitude": 83.839583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Barhaj",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120886610",
+    "latitude": 26.189583,
+    "longitude": 79.70625,
+    "location_name": "North Central Railway",
+    "sub_district": "Bhognipur",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120889340",
+    "latitude": 26.11875,
+    "longitude": 79.777083,
+    "location_name": "North Central Railway",
+    "sub_district": "Bhognipur",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120889890",
+    "latitude": 26.102083,
+    "longitude": 84.04375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Salempur tehsil",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120890150",
+    "latitude": 26.09375,
+    "longitude": 79.902083,
+    "location_name": "North Central Railway",
+    "sub_district": "Bhognipur tehsil",
+    "district": "Kanpur Dehat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120890380",
+    "latitude": 26.089583,
+    "longitude": 84.097917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sikanderpur tehsil",
+    "district": "Ballia",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120891070",
+    "latitude": 26.060417,
+    "longitude": 80.95625,
+    "location_name": "North Central Railway",
+    "sub_district": "Lalganj tehsil",
+    "district": "Raebareli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120894080",
+    "latitude": 25.964583,
+    "longitude": 84.247917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bansdih tehsil",
+    "district": "Ballia",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120894510",
+    "latitude": 25.952083,
+    "longitude": 80.122917,
+    "location_name": "North Central Railway",
+    "sub_district": "Hamirpur tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120895450",
+    "latitude": 25.922917,
+    "longitude": 80.227083,
+    "location_name": "North Central Railway",
+    "sub_district": "Ghatampur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120895600",
+    "latitude": 25.91875,
+    "longitude": 80.227083,
+    "location_name": "North Central Railway",
+    "sub_district": "Ghatampur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120896380",
+    "latitude": 25.902083,
+    "longitude": 79.752083,
+    "location_name": "North Central Railway",
+    "sub_district": "Sarila tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120896390",
+    "latitude": 25.902083,
+    "longitude": 80.36875,
+    "location_name": "North Central Railway",
+    "sub_district": "Banda tehsil",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120896950",
+    "latitude": 25.885417,
+    "longitude": 79.902083,
+    "location_name": "North Central Railway",
+    "sub_district": "Hamirpur tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120897350",
+    "latitude": 25.877083,
+    "longitude": 80.54375,
+    "location_name": "North Central Railway",
+    "sub_district": "Bindki tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120898340",
+    "latitude": 25.852083,
+    "longitude": 82.585417,
+    "location_name": "Northern Railway",
+    "sub_district": "Jaunpur tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120899590",
+    "latitude": 25.810417,
+    "longitude": 79.085417,
+    "location_name": "North Central Railway",
+    "sub_district": "Moth tehsil",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120899600",
+    "latitude": 25.810417,
+    "longitude": 79.160417,
+    "location_name": "North Central Railway",
+    "sub_district": "Garautha tehsil",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120900650",
+    "latitude": 25.777083,
+    "longitude": 80.522917,
+    "location_name": "North Central Railway",
+    "sub_district": "Fatehpur tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120900980",
+    "latitude": 25.76875,
+    "longitude": 80.522917,
+    "location_name": "North Central Railway",
+    "sub_district": "Banda tehsil",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120901490",
+    "latitude": 25.75625,
+    "longitude": 80.414583,
+    "location_name": "North Central Railway",
+    "sub_district": "Banda tehsil",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120901740",
+    "latitude": 25.747917,
+    "longitude": 84.35625,
+    "location_name": "East Central Railway",
+    "sub_district": "Ballia tehsil",
+    "district": "Ballia",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120903260",
+    "latitude": 25.702083,
+    "longitude": 84.31875,
+    "location_name": "East Central Railway",
+    "sub_district": "Ballia tehsil",
+    "district": "Ballia",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120903570",
+    "latitude": 25.689583,
+    "longitude": 84.49375,
+    "location_name": "East Central Railway",
+    "sub_district": "Shahpur",
+    "district": "Ballia",
+    "state": "Bihar",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120903710",
+    "latitude": 25.685417,
+    "longitude": 80.710417,
+    "location_name": "North Central Railway",
+    "sub_district": "Fatehpur tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120904760",
+    "latitude": 25.652083,
+    "longitude": 82.802083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kerakat tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120904850",
+    "latitude": 25.647917,
+    "longitude": 82.802083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kerakat tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120905420",
+    "latitude": 25.627083,
+    "longitude": 80.94375,
+    "location_name": "North Central Railway",
+    "sub_district": "Khaga tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120906050",
+    "latitude": 25.597917,
+    "longitude": 83.652083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Zamania tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120906500",
+    "latitude": 25.58125,
+    "longitude": 81.560417,
+    "location_name": "North Central Railway",
+    "sub_district": "Kunda tehsil",
+    "district": "Pratapgarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120907640",
+    "latitude": 25.547917,
+    "longitude": 81.01875,
+    "location_name": "North Central Railway",
+    "sub_district": "Khaga tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120908520",
+    "latitude": 25.522917,
+    "longitude": 83.79375,
+    "location_name": "East Central Railway",
+    "sub_district": "Zamania tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120908740",
+    "latitude": 25.514583,
+    "longitude": 80.285417,
+    "location_name": "North Central Railway",
+    "sub_district": "Banda tehsil",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120908760",
+    "latitude": 25.514583,
+    "longitude": 81.71875,
+    "location_name": "North Central Railway",
+    "sub_district": "Soraon tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120908790",
+    "latitude": 25.514583,
+    "longitude": 83.877083,
+    "location_name": "Eastern Zonal Council",
+    "sub_district": "Chausa block",
+    "district": "Buxar",
+    "state": "Bihar",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120908900",
+    "latitude": 25.510417,
+    "longitude": 81.122917,
+    "location_name": "North Central Railway",
+    "sub_district": "Khaga tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909020",
+    "latitude": 25.50625,
+    "longitude": 83.164583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Saidpur",
+    "district": "Varanasi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909100",
+    "latitude": 25.502083,
+    "longitude": 78.75625,
+    "location_name": "North Central Railway",
+    "sub_district": "Tahrauli",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909110",
+    "latitude": 25.502083,
+    "longitude": 83.16875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Shakaldiha",
+    "district": "Varanasi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909250",
+    "latitude": 25.497917,
+    "longitude": 83.085417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Saidpur tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909630",
+    "latitude": 25.485417,
+    "longitude": 81.89375,
+    "location_name": "Northern Railway",
+    "sub_district": "Phulpur tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120909650",
+    "latitude": 25.485417,
+    "longitude": 83.51875,
+    "location_name": "East Central Railway",
+    "sub_district": "Zamania tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120911410",
+    "latitude": 25.422917,
+    "longitude": 78.70625,
+    "location_name": "North Central Railway",
+    "sub_district": "Orchha tehsil",
+    "district": "Niwari",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120911440",
+    "latitude": 25.422917,
+    "longitude": 81.15625,
+    "location_name": "North Central Railway",
+    "sub_district": "Manjhanpur tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120911450",
+    "latitude": 25.422917,
+    "longitude": 81.885417,
+    "location_name": "Prayagraj",
+    "sub_district": "Prayagraj",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120911460",
+    "latitude": 25.422917,
+    "longitude": 81.889583,
+    "location_name": "Phulpur tehsil",
+    "sub_district": "Phulpur tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120912140",
+    "latitude": 25.397917,
+    "longitude": 83.53125,
+    "location_name": "East Central Railway",
+    "sub_district": "Ghazipur tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120913390",
+    "latitude": 25.352083,
+    "longitude": 81.68125,
+    "location_name": "North Central Railway",
+    "sub_district": "Bara tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120913510",
+    "latitude": 25.347917,
+    "longitude": 81.247917,
+    "location_name": "North Central Railway",
+    "sub_district": "Manjhanpur tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120913520",
+    "latitude": 25.347917,
+    "longitude": 82.047917,
+    "location_name": "Phulpur tehsil",
+    "sub_district": "Phulpur tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120913760",
+    "latitude": 25.339583,
+    "longitude": 81.372917,
+    "location_name": "North Central Railway",
+    "sub_district": "Manjhanpur tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120913960",
+    "latitude": 25.33125,
+    "longitude": 81.785417,
+    "location_name": "North Central Railway",
+    "sub_district": "Allahabad tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120914230",
+    "latitude": 25.322917,
+    "longitude": 83.04375,
+    "location_name": "Northern Railway",
+    "sub_district": "Chandauli tehsil",
+    "district": "Chandauli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120915210",
+    "latitude": 25.29375,
+    "longitude": 80.310417,
+    "location_name": "North Central Railway",
+    "sub_district": "Gaurihar tehsil",
+    "district": "Chhatarpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120915590",
+    "latitude": 25.28125,
+    "longitude": 82.085417,
+    "location_name": "North Central Railway",
+    "sub_district": "Karchhana tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120915760",
+    "latitude": 25.277083,
+    "longitude": 80.34375,
+    "location_name": "West Central Railway",
+    "sub_district": "Gaurihar tehsil",
+    "district": "Chhatarpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120915770",
+    "latitude": 25.277083,
+    "longitude": 81.527083,
+    "location_name": "North Central Railway",
+    "sub_district": "Chail tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120915780",
+    "latitude": 25.277083,
+    "longitude": 82.085417,
+    "location_name": "North Central Railway",
+    "sub_district": "Karchhana tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120917670",
+    "latitude": 25.21875,
+    "longitude": 82.047917,
+    "location_name": "North Central Railway",
+    "sub_district": "Karchhana tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120917790",
+    "latitude": 25.214583,
+    "longitude": 78.564583,
+    "location_name": "North Central Railway",
+    "sub_district": "Talbahat",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120918000",
+    "latitude": 25.20625,
+    "longitude": 82.99375,
+    "location_name": "North Central Railway",
+    "sub_district": "Varanasi",
+    "district": "Varanasi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120918290",
+    "latitude": 25.19375,
+    "longitude": 82.685417,
+    "location_name": "North Central Railway",
+    "sub_district": "Mirzapur tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120918450",
+    "latitude": 25.189583,
+    "longitude": 82.464583,
+    "location_name": "North Central Railway",
+    "sub_district": "Mirzapur tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120918700",
+    "latitude": 25.177083,
+    "longitude": 82.227083,
+    "location_name": "North Central Railway",
+    "sub_district": "Gyanpur",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120919090",
+    "latitude": 25.160417,
+    "longitude": 82.527083,
+    "location_name": "North Central Railway",
+    "sub_district": "Mirzapur tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120919620",
+    "latitude": 25.14375,
+    "longitude": 82.747917,
+    "location_name": "North Central Railway",
+    "sub_district": "Chunar tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120919690",
+    "latitude": 25.139583,
+    "longitude": 82.872917,
+    "location_name": "North Central Railway",
+    "sub_district": "Chunar tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120921050",
+    "latitude": 25.089583,
+    "longitude": 78.364583,
+    "location_name": "North Central Railway",
+    "sub_district": "Talbahat",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120921550",
+    "latitude": 25.077083,
+    "longitude": 81.80625,
+    "location_name": "North Central Railway",
+    "sub_district": "Bara tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120922000",
+    "latitude": 25.064583,
+    "longitude": 78.347917,
+    "location_name": "North Central Railway",
+    "sub_district": "Talbahat",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120924630",
+    "latitude": 24.977083,
+    "longitude": 78.30625,
+    "location_name": "North Central Railway",
+    "sub_district": "Khaniyadhana tehsil",
+    "district": "Shivpuri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120927490",
+    "latitude": 24.897917,
+    "longitude": 78.210417,
+    "location_name": "West Central Railway",
+    "sub_district": "Khaniyadhana tehsil",
+    "district": "Shivpuri",
+    "state": "Madhya Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120938060",
+    "latitude": 24.539583,
+    "longitude": 82.977083,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120938230",
+    "latitude": 24.535417,
+    "longitude": 82.99375,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120938340",
+    "latitude": 24.53125,
+    "longitude": 82.997917,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120938450",
+    "latitude": 24.527083,
+    "longitude": 83.039583,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120938510",
+    "latitude": 24.522917,
+    "longitude": 78.222917,
+    "location_name": "North Central Railway",
+    "sub_district": "Mungaoli tehsil",
+    "district": "Ashoknagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120940020",
+    "latitude": 24.472917,
+    "longitude": 83.135417,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120950100",
+    "latitude": 24.152083,
+    "longitude": 82.88125,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120950620",
+    "latitude": 24.127083,
+    "longitude": 82.84375,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121438370",
+    "latitude": 29.927083,
+    "longitude": 77.210417,
+    "location_name": "Northern Zonal Council",
+    "sub_district": "Indri tehsil",
+    "district": "Karnal",
+    "state": "Haryana",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121439280",
+    "latitude": 29.86875,
+    "longitude": 77.197917,
+    "location_name": "Northern Zonal Council",
+    "sub_district": "Indri tehsil",
+    "district": "Karnal",
+    "state": "Haryana",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121443640",
+    "latitude": 29.489583,
+    "longitude": 78.685417,
+    "location_name": "Afzalgarh",
+    "sub_district": "Afzalgarh",
+    "district": "Bijnor",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121444610",
+    "latitude": 29.422917,
+    "longitude": 78.622917,
+    "location_name": "Afzalgarh",
+    "sub_district": "Afzalgarh",
+    "district": "Bijnor",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121446370",
+    "latitude": 29.285417,
+    "longitude": 78.09375,
+    "location_name": "Northern Railway",
+    "sub_district": "Jansath tehsil",
+    "district": "Muzaffarnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121447540",
+    "latitude": 29.19375,
+    "longitude": 77.147917,
+    "location_name": "Northern Railway",
+    "sub_district": "Baraut tehsil",
+    "district": "Bagpat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121448880",
+    "latitude": 29.097917,
+    "longitude": 78.697917,
+    "location_name": "Northern Railway",
+    "sub_district": "Kanth",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121450030",
+    "latitude": 29.010417,
+    "longitude": 78.722917,
+    "location_name": "Northern Railway",
+    "sub_district": "Kanth",
+    "district": "Moradabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121450440",
+    "latitude": 28.972917,
+    "longitude": 79.03125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Tanda tehsil",
+    "district": "Rampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121450500",
+    "latitude": 28.96875,
+    "longitude": 78.08125,
+    "location_name": "Northern Railway",
+    "sub_district": "Mawana tehsil",
+    "district": "Meerut",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121452740",
+    "latitude": 28.79375,
+    "longitude": 78.139583,
+    "location_name": "Northern Railway",
+    "sub_district": "Dhanaura tehsil",
+    "district": "Amroha",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121454130",
+    "latitude": 28.68125,
+    "longitude": 80.285417,
+    "location_name": "Puranpur tehsil",
+    "sub_district": "Puranpur tehsil",
+    "district": "Pilibhit",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121454230",
+    "latitude": 28.672917,
+    "longitude": 78.197917,
+    "location_name": "Northern Railway",
+    "sub_district": "Garhmukteshwar tehsil",
+    "district": "Hapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121454840",
+    "latitude": 28.63125,
+    "longitude": 80.277083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Puranpur tehsil",
+    "district": "Pilibhit",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121455330",
+    "latitude": 28.59375,
+    "longitude": 79.00625,
+    "location_name": "Northern Railway",
+    "sub_district": "Shahabad tehsil",
+    "district": "Rampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121456360",
+    "latitude": 28.51875,
+    "longitude": 80.352083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Puranpur tehsil",
+    "district": "Pilibhit",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121457300",
+    "latitude": 28.452083,
+    "longitude": 80.389583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Palia tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121458000",
+    "latitude": 28.40625,
+    "longitude": 80.48125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Palia tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121458390",
+    "latitude": 28.38125,
+    "longitude": 78.277083,
+    "location_name": "Northern Railway",
+    "sub_district": "Anupshahr tehsil",
+    "district": "Bulandshahr",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121458580",
+    "latitude": 28.364583,
+    "longitude": 80.560417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Palia tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121459330",
+    "latitude": 28.310417,
+    "longitude": 78.29375,
+    "location_name": "Northern Railway",
+    "sub_district": "Debai Tehsil",
+    "district": "Bulandshahr",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121459510",
+    "latitude": 28.297917,
+    "longitude": 80.635417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Gola Gokaran Nath tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121459610",
+    "latitude": 28.289583,
+    "longitude": 77.497917,
+    "location_name": "Northern Zonal Council",
+    "sub_district": "Ballabgarh tehsil",
+    "district": "Faridabad",
+    "state": "Haryana",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121460350",
+    "latitude": 28.235417,
+    "longitude": 78.36875,
+    "location_name": "Northern Railway",
+    "sub_district": "Dibai",
+    "district": "Sambhal",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121461000",
+    "latitude": 28.18125,
+    "longitude": 80.79375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Nighasan",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121461090",
+    "latitude": 28.177083,
+    "longitude": 78.410417,
+    "location_name": "Northern Railway",
+    "sub_district": "Gunnaur tehsil",
+    "district": "Sambhal",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121461170",
+    "latitude": 28.16875,
+    "longitude": 81.127083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121461920",
+    "latitude": 28.11875,
+    "longitude": 80.877083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Lakhimpur tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121462300",
+    "latitude": 28.08125,
+    "longitude": 78.49375,
+    "location_name": "North Central Railway",
+    "sub_district": "Atrauli tehsil",
+    "district": "Aligarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121462750",
+    "latitude": 28.052083,
+    "longitude": 77.502083,
+    "location_name": "North Central Railway",
+    "sub_district": "Hasanpur",
+    "district": "Aligarh",
+    "state": "Haryana",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121462850",
+    "latitude": 28.047917,
+    "longitude": 78.572917,
+    "location_name": "North Central Railway",
+    "sub_district": "Atrauli tehsil",
+    "district": "Aligarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121463640",
+    "latitude": 27.99375,
+    "longitude": 77.54375,
+    "location_name": "North Central Railway",
+    "sub_district": "Khair tehsil",
+    "district": "Aligarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121463650",
+    "latitude": 27.99375,
+    "longitude": 78.647917,
+    "location_name": "North Central Railway",
+    "sub_district": "Kasganj tehsil",
+    "district": "Kasganj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121463770",
+    "latitude": 27.985417,
+    "longitude": 81.21875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Dhaurahara tehsil",
+    "district": "Lakhimpur Kheri",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121464290",
+    "latitude": 27.94375,
+    "longitude": 78.772917,
+    "location_name": "North Central Railway",
+    "sub_district": "Kasganj tehsil",
+    "district": "Kasganj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121465750",
+    "latitude": 27.84375,
+    "longitude": 77.622917,
+    "location_name": "North Central Railway",
+    "sub_district": "Mat",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121466060",
+    "latitude": 27.810417,
+    "longitude": 81.00625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Laharpur tehsil",
+    "district": "Sitapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121467380",
+    "latitude": 27.697917,
+    "longitude": 77.710417,
+    "location_name": "North Central Railway",
+    "sub_district": "Mat",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121468440",
+    "latitude": 27.614583,
+    "longitude": 79.66875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Jalalabad tehsil",
+    "district": "Shahjahanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121468510",
+    "latitude": 27.60625,
+    "longitude": 81.322917,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Mahasi tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121468990",
+    "latitude": 27.56875,
+    "longitude": 79.464583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kaimganj Tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121469680",
+    "latitude": 27.51875,
+    "longitude": 77.685417,
+    "location_name": "North Central Railway",
+    "sub_district": "Mahavan",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121469900",
+    "latitude": 27.50625,
+    "longitude": 81.327083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Mahasi tehsil",
+    "district": "Bahraich",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121471420",
+    "latitude": 27.385417,
+    "longitude": 82.34375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Balrampur tehsil",
+    "district": "Balrampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121471540",
+    "latitude": 27.377083,
+    "longitude": 79.727083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121471650",
+    "latitude": 27.36875,
+    "longitude": 77.789583,
+    "location_name": "North Central Railway",
+    "sub_district": "Mahavan",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121472020",
+    "latitude": 27.335417,
+    "longitude": 82.477083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Tulsipur tehsil",
+    "district": "Balrampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121472440",
+    "latitude": 27.297917,
+    "longitude": 77.835417,
+    "location_name": "North Central Railway",
+    "sub_district": "Mathura Tehsil",
+    "district": "Mathura",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121472890",
+    "latitude": 27.26875,
+    "longitude": 77.997917,
+    "location_name": "North Central Railway",
+    "sub_district": "Etmadpur tehsil",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121473290",
+    "latitude": 27.23125,
+    "longitude": 82.514583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Domariaganj",
+    "district": "Balrampur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121473650",
+    "latitude": 27.20625,
+    "longitude": 82.76875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Domariyaganj tehsil",
+    "district": "Siddharthnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121473660",
+    "latitude": 27.20625,
+    "longitude": 83.947917,
+    "location_name": "East Central Railway",
+    "sub_district": "Padrauna tehsil",
+    "district": "Kushinagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121473840",
+    "latitude": 27.19375,
+    "longitude": 82.610417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Domariyaganj tehsil",
+    "district": "Siddharthnagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121473990",
+    "latitude": 27.177083,
+    "longitude": 78.18125,
+    "location_name": "North Central Railway",
+    "sub_district": "Etmadpur tehsil",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121474690",
+    "latitude": 27.127083,
+    "longitude": 78.30625,
+    "location_name": "North Central Railway",
+    "sub_district": "Firozabad tehsil",
+    "district": "Firozabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121474700",
+    "latitude": 27.127083,
+    "longitude": 78.36875,
+    "location_name": "North Central Railway",
+    "sub_district": "Firozabad tehsil",
+    "district": "Firozabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121475280",
+    "latitude": 27.09375,
+    "longitude": 84.00625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Padrauna tehsil",
+    "district": "Kushinagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121475570",
+    "latitude": 27.064583,
+    "longitude": 78.385417,
+    "location_name": "North Central Railway",
+    "sub_district": "Firozabad tehsil",
+    "district": "Firozabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121475920",
+    "latitude": 27.047917,
+    "longitude": 79.985417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kannauj tehsil",
+    "district": "Kannauj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121476160",
+    "latitude": 27.03125,
+    "longitude": 81.50625,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sirauli Gauspur",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121477620",
+    "latitude": 26.914583,
+    "longitude": 78.73125,
+    "location_name": "North Central Railway",
+    "sub_district": "Shikohabad tehsil",
+    "district": "Firozabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121478400",
+    "latitude": 26.864583,
+    "longitude": 78.814583,
+    "location_name": "North Central Railway",
+    "sub_district": "Jaswantnagar tehsil",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121478640",
+    "latitude": 26.847917,
+    "longitude": 78.377083,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Porsa tehsil",
+    "district": "Morena",
+    "state": "Madhya Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121478760",
+    "latitude": 26.839583,
+    "longitude": 81.089583,
+    "location_name": "Northern Railway",
+    "sub_district": "Lucknow",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121478990",
+    "latitude": 26.822917,
+    "longitude": 81.014583,
+    "location_name": "Northern Railway",
+    "sub_district": "Lucknow",
+    "district": "Lucknow",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121479220",
+    "latitude": 26.797917,
+    "longitude": 78.722917,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Ater",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121479300",
+    "latitude": 26.79375,
+    "longitude": 78.910417,
+    "location_name": "North Central Railway",
+    "sub_district": "Etawah tehsil",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121479310",
+    "latitude": 26.79375,
+    "longitude": 81.927083,
+    "location_name": "Northern Railway",
+    "sub_district": "Tarabganj tehsil",
+    "district": "Gonda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121479620",
+    "latitude": 26.76875,
+    "longitude": 78.54375,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Bah tehsil",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121479670",
+    "latitude": 26.764583,
+    "longitude": 82.264583,
+    "location_name": "Northern Railway",
+    "sub_district": "Fyzabad",
+    "district": "Ayodhya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121480010",
+    "latitude": 26.74375,
+    "longitude": 80.13125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bilhaur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121480050",
+    "latitude": 26.739583,
+    "longitude": 78.997917,
+    "location_name": "North Central Railway",
+    "sub_district": "Etawah tehsil",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121480550",
+    "latitude": 26.697917,
+    "longitude": 78.947917,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Etawah tehsil",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121480880",
+    "latitude": 26.672917,
+    "longitude": 82.510417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Harraiya tehsil",
+    "district": "Basti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121481090",
+    "latitude": 26.652083,
+    "longitude": 81.414583,
+    "location_name": "Northern Railway",
+    "sub_district": "Haidergarh tehsil",
+    "district": "Barabanki",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121481420",
+    "latitude": 26.63125,
+    "longitude": 79.072917,
+    "location_name": "North Central Railway",
+    "sub_district": "Chakarnagar",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121481690",
+    "latitude": 26.614583,
+    "longitude": 82.602083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Harraiya tehsil",
+    "district": "Basti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121482070",
+    "latitude": 26.585417,
+    "longitude": 79.189583,
+    "location_name": "North Central Railway",
+    "sub_district": "Chakarnagar",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121482210",
+    "latitude": 26.572917,
+    "longitude": 83.139583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ghanghata tehsil",
+    "district": "Sant Kabir Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121482270",
+    "latitude": 26.56875,
+    "longitude": 82.785417,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Tanda",
+    "district": "Basti",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121482400",
+    "latitude": 26.55625,
+    "longitude": 79.077083,
+    "location_name": "Chambal River Basin",
+    "sub_district": "Chakarnagar",
+    "district": "Etawah",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121482700",
+    "latitude": 26.535417,
+    "longitude": 82.86875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ghanghata tehsil",
+    "district": "Sant Kabir Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483130",
+    "latitude": 26.502083,
+    "longitude": 82.939583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Ghanghata tehsil",
+    "district": "Sant Kabir Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483240",
+    "latitude": 26.49375,
+    "longitude": 80.364583,
+    "location_name": "Northern Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483250",
+    "latitude": 26.49375,
+    "longitude": 81.78125,
+    "location_name": "Northern Railway",
+    "sub_district": "Baldirai",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483560",
+    "latitude": 26.472917,
+    "longitude": 83.18125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Khajni",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483670",
+    "latitude": 26.464583,
+    "longitude": 83.01875,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Annapur",
+    "district": "Ambedkar Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121483770",
+    "latitude": 26.45625,
+    "longitude": 83.477083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bansgaon tehsil",
+    "district": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121484030",
+    "latitude": 26.435417,
+    "longitude": 80.410417,
+    "location_name": "North Central Railway",
+    "sub_district": "Unnao tehsil",
+    "district": "Unnao",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121484190",
+    "latitude": 26.422917,
+    "longitude": 79.48125,
+    "location_name": "North Central Railway",
+    "sub_district": "Jalaun tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121484400",
+    "latitude": 26.40625,
+    "longitude": 80.45625,
+    "location_name": "North Central Railway",
+    "sub_district": "Kanpur tehsil",
+    "district": "Kanpur Nagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121484430",
+    "latitude": 26.402083,
+    "longitude": 79.322917,
+    "location_name": "North Central Railway",
+    "sub_district": "Auraiya tehsil",
+    "district": "Auraiya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121485120",
+    "latitude": 26.360417,
+    "longitude": 80.514583,
+    "location_name": "North Central Railway",
+    "sub_district": "Unnao tehsil",
+    "district": "Unnao",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121485590",
+    "latitude": 26.327083,
+    "longitude": 82.052083,
+    "location_name": "Northern Railway",
+    "sub_district": "Sultanpur tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121486220",
+    "latitude": 26.28125,
+    "longitude": 82.072917,
+    "location_name": "Northern Railway",
+    "sub_district": "Sultanpur tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121486660",
+    "latitude": 26.247917,
+    "longitude": 82.147917,
+    "location_name": "Northern Railway",
+    "sub_district": "Jaisinghpur tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121487450",
+    "latitude": 26.18125,
+    "longitude": 82.297917,
+    "location_name": "Northern Railway",
+    "sub_district": "Lambhua tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121487880",
+    "latitude": 26.147917,
+    "longitude": 82.33125,
+    "location_name": "Northern Railway",
+    "sub_district": "Lambhua tehsil",
+    "district": "Sultanpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121488730",
+    "latitude": 26.077083,
+    "longitude": 80.764583,
+    "location_name": "North Central Railway",
+    "sub_district": "Bindki tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121488870",
+    "latitude": 26.06875,
+    "longitude": 80.072917,
+    "location_name": "North Central Railway",
+    "sub_district": "Hamirpur tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121488880",
+    "latitude": 26.06875,
+    "longitude": 81.01875,
+    "location_name": "Northern Railway",
+    "sub_district": "Dalmau tehsil",
+    "district": "Raebareli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121489520",
+    "latitude": 26.027083,
+    "longitude": 80.81875,
+    "location_name": "North Central Railway",
+    "sub_district": "Lalganj tehsil",
+    "district": "Raebareli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121490110",
+    "latitude": 25.985417,
+    "longitude": 81.102083,
+    "location_name": "Northern Railway",
+    "sub_district": "Dalmau tehsil",
+    "district": "Raebareli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121490320",
+    "latitude": 25.964583,
+    "longitude": 81.164583,
+    "location_name": "Northern Railway",
+    "sub_district": "Dalmau tehsil",
+    "district": "Raebareli",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121490980",
+    "latitude": 25.914583,
+    "longitude": 81.214583,
+    "location_name": "Northern Railway",
+    "sub_district": "Mustafabad",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121491050",
+    "latitude": 25.910417,
+    "longitude": 79.652083,
+    "location_name": "North Central Railway",
+    "sub_district": "Sarila tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121491280",
+    "latitude": 25.89375,
+    "longitude": 79.53125,
+    "location_name": "North Central Railway",
+    "sub_district": "Orai tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121491410",
+    "latitude": 25.885417,
+    "longitude": 79.989583,
+    "location_name": "North Central Railway",
+    "sub_district": "Hamirpur tehsil",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121491890",
+    "latitude": 25.85625,
+    "longitude": 79.50625,
+    "location_name": "North Central Railway",
+    "sub_district": "Orai tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121492210",
+    "latitude": 25.835417,
+    "longitude": 81.285417,
+    "location_name": "Northern Railway",
+    "sub_district": "Khaga tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121492310",
+    "latitude": 25.827083,
+    "longitude": 79.55625,
+    "location_name": "North Central Railway",
+    "sub_district": "Orai tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121492480",
+    "latitude": 25.814583,
+    "longitude": 79.28125,
+    "location_name": "North Central Railway",
+    "sub_district": "Orai tehsil",
+    "district": "Jalaun",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121492950",
+    "latitude": 25.772917,
+    "longitude": 81.385417,
+    "location_name": "Northern Railway",
+    "sub_district": "Sirathu tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121493110",
+    "latitude": 25.760417,
+    "longitude": 79.05625,
+    "location_name": "North Central Railway",
+    "sub_district": "Moth",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121493390",
+    "latitude": 25.739583,
+    "longitude": 82.70625,
+    "location_name": "Northern Railway",
+    "sub_district": "Jaunpur tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121493570",
+    "latitude": 25.722917,
+    "longitude": 80.585417,
+    "location_name": "North Central Railway",
+    "sub_district": "Fatehpur tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121493670",
+    "latitude": 25.714583,
+    "longitude": 80.81875,
+    "location_name": "North Central Railway",
+    "sub_district": "Baberu tehsil",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494030",
+    "latitude": 25.69375,
+    "longitude": 82.752083,
+    "location_name": "Northern Railway",
+    "sub_district": "Jaunpur tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494150",
+    "latitude": 25.685417,
+    "longitude": 80.85625,
+    "location_name": "North Central Railway",
+    "sub_district": "Fatehpur tehsil",
+    "district": "Fatehpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494160",
+    "latitude": 25.685417,
+    "longitude": 81.410417,
+    "location_name": "North Central Railway",
+    "sub_district": "Kunda tehsil",
+    "district": "Pratapgarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494260",
+    "latitude": 25.677083,
+    "longitude": 79.010417,
+    "location_name": "North Central Railway",
+    "sub_district": "Tahrauli",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494550",
+    "latitude": 25.65625,
+    "longitude": 80.31875,
+    "location_name": "North Central Railway",
+    "sub_district": "Maudaha",
+    "district": "Banda",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121494750",
+    "latitude": 25.64375,
+    "longitude": 78.972917,
+    "location_name": "North Central Railway",
+    "sub_district": "Tahrauli",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121495020",
+    "latitude": 25.622917,
+    "longitude": 82.94375,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Kerakat tehsil",
+    "district": "Jaunpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121495070",
+    "latitude": 25.61875,
+    "longitude": 81.477083,
+    "location_name": "North Central Railway",
+    "sub_district": "Sirathu",
+    "district": "Pratapgarh",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121495720",
+    "latitude": 25.56875,
+    "longitude": 78.91875,
+    "location_name": "North Central Railway",
+    "sub_district": "Tahrauli",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121495900",
+    "latitude": 25.55625,
+    "longitude": 81.647917,
+    "location_name": "North Central Railway",
+    "sub_district": "Soraon tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121496060",
+    "latitude": 25.54375,
+    "longitude": 78.872917,
+    "location_name": "North Central Railway",
+    "sub_district": "Nivari",
+    "district": "Jhansi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121496240",
+    "latitude": 25.527083,
+    "longitude": 83.239583,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Saidpur tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121496640",
+    "latitude": 25.49375,
+    "longitude": 81.83125,
+    "location_name": "Northern Railway",
+    "sub_district": "Allahabad tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121496710",
+    "latitude": 25.489583,
+    "longitude": 83.377083,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Saidpur tehsil",
+    "district": "Ghazipur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121497870",
+    "latitude": 25.39375,
+    "longitude": 80.310417,
+    "location_name": "North Central Railway",
+    "sub_district": "Gaurihar tehsil",
+    "district": "Chhatarpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121497880",
+    "latitude": 25.39375,
+    "longitude": 83.18125,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Varanasi",
+    "district": "Varanasi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121498710",
+    "latitude": 25.335417,
+    "longitude": 81.935417,
+    "location_name": "North Central Railway",
+    "sub_district": "Karchhana tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121499030",
+    "latitude": 25.310417,
+    "longitude": 82.197917,
+    "location_name": "Handia tehsil",
+    "sub_district": "Handia tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121499540",
+    "latitude": 25.272917,
+    "longitude": 82.297917,
+    "location_name": "Gyanpur tehsil",
+    "sub_district": "Gyanpur tehsil",
+    "district": "Bhadohi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121499630",
+    "latitude": 25.264583,
+    "longitude": 81.44375,
+    "location_name": "North Central Railway",
+    "sub_district": "Manjhanpur tehsil",
+    "district": "Kaushambi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121499790",
+    "latitude": 25.25625,
+    "longitude": 82.389583,
+    "location_name": "\u0a17\u0a70\u0a17\u0a3e \u0a26\u0a30\u0a3f\u0a06",
+    "sub_district": "Mirzapur tehsil",
+    "district": "Mirzapur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121500210",
+    "latitude": 25.227083,
+    "longitude": 82.614583,
+    "location_name": "\u0a17\u0a70\u0a17\u0a3e \u0a26\u0a30\u0a3f\u0a06",
+    "sub_district": "Aurai tehsil",
+    "district": "Bhadohi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121500510",
+    "latitude": 25.20625,
+    "longitude": 82.927083,
+    "location_name": "North Central Railway",
+    "sub_district": "Varanasi",
+    "district": "Varanasi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121500920",
+    "latitude": 25.172917,
+    "longitude": 80.427083,
+    "location_name": "West Central Railway",
+    "sub_district": "Gaurihar tehsil",
+    "district": "Chhatarpur",
+    "state": "Madhya Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121501160",
+    "latitude": 25.15625,
+    "longitude": 78.497917,
+    "location_name": "North Central Railway",
+    "sub_district": "Talbahat",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121501170",
+    "latitude": 25.15625,
+    "longitude": 81.977083,
+    "location_name": "North Central Railway",
+    "sub_district": "Meja",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121501270",
+    "latitude": 25.147917,
+    "longitude": 81.84375,
+    "location_name": "North Central Railway",
+    "sub_district": "Karchhana tehsil",
+    "district": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121501720",
+    "latitude": 25.11875,
+    "longitude": 78.43125,
+    "location_name": "North Central Railway",
+    "sub_district": "Talbahat",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121502340",
+    "latitude": 25.072917,
+    "longitude": 80.314583,
+    "location_name": "West Central Railway",
+    "sub_district": "Gaurihar tehsil",
+    "district": "Chhatarpur",
+    "state": "Madhya Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121506200",
+    "latitude": 24.760417,
+    "longitude": 78.23125,
+    "location_name": "West Central Railway",
+    "sub_district": "Chanderi tehsil",
+    "district": "Ashoknagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121507140",
+    "latitude": 24.689583,
+    "longitude": 78.260417,
+    "location_name": "North Central Railway",
+    "sub_district": "Chanderi tehsil",
+    "district": "Ashoknagar",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121508120",
+    "latitude": 24.63125,
+    "longitude": 78.26875,
+    "location_name": "North Central Railway",
+    "sub_district": "Lalitpur tehsil",
+    "district": "Lalitpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121508300",
+    "latitude": 24.61875,
+    "longitude": 82.872917,
+    "location_name": "East Central Railway",
+    "sub_district": "Ghorawal tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121508470",
+    "latitude": 24.60625,
+    "longitude": 82.78125,
+    "location_name": "East Central Railway",
+    "sub_district": "Ghorawal tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121509640",
+    "latitude": 24.50625,
+    "longitude": 83.385417,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121510140",
+    "latitude": 24.46875,
+    "longitude": 83.222917,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121510820",
+    "latitude": 24.410417,
+    "longitude": 82.98125,
+    "location_name": "East Central Railway",
+    "sub_district": "Robertsganj tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121511890",
+    "latitude": 24.322917,
+    "longitude": 82.985417,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121512540",
+    "latitude": 24.277083,
+    "longitude": 83.014583,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121512910",
+    "latitude": 24.247917,
+    "longitude": 83.010417,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121513710",
+    "latitude": 24.18125,
+    "longitude": 82.989583,
+    "location_name": "East Central Railway",
+    "sub_district": "Dudhi tehsil",
+    "district": "Sonbhadra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120854010",
+    "latitude": 27.23541666666545,
+    "longitude": 79.69374999999582,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Farrukhabad tehsil",
+    "district": "Farrukhabad",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120855950",
+    "latitude": 27.17708333333212,
+    "longitude": 79.84374999999585,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Sawayajpur tehsil",
+    "district": "Hardoi",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120878420",
+    "latitude": 26.439583333332,
+    "longitude": 79.21458333332924,
+    "location_name": "North Central Railway",
+    "sub_district": "Chakarnagar",
+    "district": "Auraiya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120878430",
+    "latitude": 26.439583333332,
+    "longitude": 79.21874999999591,
+    "location_name": "North Central Railway",
+    "sub_district": "Auraiya tehsil",
+    "district": "Auraiya",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120881440",
+    "latitude": 26.352083333332075,
+    "longitude": 79.51458333332926,
+    "location_name": "North Central Railway",
+    "sub_district": "Sikandra tehsil",
+    "district": "Kanpur Dehat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120888130",
+    "latitude": 26.15624999999864,
+    "longitude": 79.93958333332915,
+    "location_name": "North Central Railway",
+    "sub_district": "Bhognipur",
+    "district": "Hamirpur",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120888940",
+    "latitude": 26.131249999998715,
+    "longitude": 83.8937499999958,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Bilthra",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4120889880",
+    "latitude": 26.10208333333213,
+    "longitude": 84.03541666666257,
+    "location_name": "North Eastern Railway",
+    "sub_district": "Salempur tehsil",
+    "district": "Deoria",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121445720",
+    "latitude": 29.339583333331973,
+    "longitude": 78.07291666666254,
+    "location_name": "Northern Railway",
+    "sub_district": "Bijnor tehsil",
+    "district": "Bijnor",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121472500",
+    "latitude": 27.29374999999873,
+    "longitude": 77.88124999999587,
+    "location_name": "North Central Railway",
+    "sub_district": "Mahavan",
+    "district": "Agra",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  },
+  {
+    "gauge_id": "hybas_4121486100",
+    "latitude": 26.28958333333196,
+    "longitude": 79.53541666666257,
+    "location_name": "North Central Railway",
+    "sub_district": "Sikandra tehsil",
+    "district": "Kanpur Dehat",
+    "state": "Uttar Pradesh",
+    "country": "India"
+  }
+]

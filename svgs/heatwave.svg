@@ -1,0 +1,131 @@
+<svg width="100%" height="100%" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffb25a"/>
+      <stop offset="45%" stop-color="#ffc46b"/>
+      <stop offset="75%" stop-color="#f6d27d"/>
+      <stop offset="100%" stop-color="#d8a35b"/>
+    </linearGradient>
+
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b97732"/>
+      <stop offset="55%" stop-color="#9a5d24"/>
+      <stop offset="100%" stop-color="#744018"/>
+    </linearGradient>
+
+    <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fff6b5" stop-opacity="1"/>
+      <stop offset="45%" stop-color="#ffd76a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ffb23d" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="blurSoft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+
+    <filter id="blurHeat" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.2"/>
+    </filter>
+
+    <path id="ridgePath" d="M0,405 C90,390 145,418 220,402 C305,383 360,412 438,396 C520,380 596,405 672,392 C728,382 770,390 800,386 L800,600 L0,600 Z"/>
+
+    <path id="crack1" d="M0,0 l18,10 l-14,9 l22,12 l-16,10" />
+    <path id="crack2" d="M0,0 l-12,10 l14,8 l-18,10 l12,8" />
+
+    <path id="flowPath1" d="M-40,360 C120,320 220,395 360,350 C500,305 620,390 840,335" />
+    <path id="flowPath2" d="M-60,390 C100,350 225,430 390,382 C540,340 660,418 860,372" />
+    <path id="flowPath3" d="M-50,430 C130,395 260,462 430,420 C565,387 670,455 850,418" />
+  </defs>
+
+  <rect x="0" y="0" width="800" height="600" fill="url(#skyGrad)"/>
+
+  <ellipse cx="640" cy="120" rx="110" ry="110" fill="url(#sunGlow)" filter="url(#blurSoft)"/>
+  <circle cx="640" cy="120" r="52" fill="#ffe58a"/>
+  <circle cx="640" cy="120" r="36" fill="#fff3b0" opacity="0.9"/>
+
+  <g opacity="0.22" stroke="#fff2be" stroke-width="4" stroke-linecap="round">
+    <line x1="640" y1="22" x2="640" y2="0"/>
+    <line x1="640" y1="240" x2="640" y2="270"/>
+    <line x1="542" y1="120" x2="500" y2="120"/>
+    <line x1="738" y1="120" x2="782" y2="120"/>
+    <line x1="575" y1="55" x2="545" y2="25"/>
+    <line x1="705" y1="185" x2="735" y2="215"/>
+    <line x1="575" y1="185" x2="545" y2="215"/>
+    <line x1="705" y1="55" x2="735" y2="25"/>
+  </g>
+
+  <path d="M0,355 C130,335 220,360 330,340 C470,314 588,350 800,325 L800,600 L0,600 Z" fill="#c98a44" opacity="0.45"/>
+
+  <use href="#ridgePath" fill="url(#groundGrad)"/>
+
+  <g fill="none" stroke="#6a3412" stroke-width="3" stroke-linecap="round" opacity="0.42">
+    <use href="#crack1" transform="translate(95 470) scale(1.4 1.1)"/>
+    <use href="#crack2" transform="translate(165 520) scale(1.2 1)"/>
+    <use href="#crack1" transform="translate(240 455) scale(1.6 1.1)"/>
+    <use href="#crack2" transform="translate(325 505) scale(1.5 1.1)"/>
+    <use href="#crack1" transform="translate(420 470) scale(1.8 1.2)"/>
+    <use href="#crack2" transform="translate(515 530) scale(1.35 1)"/>
+    <use href="#crack1" transform="translate(610 465) scale(1.55 1.1)"/>
+    <use href="#crack2" transform="translate(705 510) scale(1.5 1.05)"/>
+  </g>
+
+  <g opacity="0.75" filter="url(#blurHeat)">
+    <path d="M110,420 C118,396 128,396 136,420 C144,444 154,444 162,420 C170,396 180,396 188,420"
+          fill="none" stroke="#fff3c2" stroke-width="5" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 0 -14; 0 0" dur="2.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.18;0.5;0.18" dur="2.4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M260,445 C268,418 278,418 286,445 C294,472 304,472 312,445 C320,418 330,418 338,445"
+          fill="none" stroke="#fff0b0" stroke-width="6" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 0 -18; 0 0" dur="2.1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.14;0.46;0.14" dur="2.1s" repeatCount="indefinite"/>
+    </path>
+    <path d="M420,430 C428,402 438,402 446,430 C454,458 464,458 472,430 C480,402 490,402 498,430"
+          fill="none" stroke="#fff7cf" stroke-width="5" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 0 -16; 0 0" dur="2.7s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.15;0.48;0.15" dur="2.7s" repeatCount="indefinite"/>
+    </path>
+    <path d="M610,448 C618,422 628,422 636,448 C644,474 654,474 662,448 C670,422 680,422 688,448"
+          fill="none" stroke="#fff0b8" stroke-width="6" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" values="0 0; 0 -15; 0 0" dur="2.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.12;0.42;0.12" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-40,360 C120,320 220,395 360,350 C500,305 620,390 840,335"
+          stroke="#fff4c7" stroke-width="7" opacity="0.28" stroke-dasharray="28 22">
+      <animate attributeName="stroke-dashoffset" values="0;-100" dur="3.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.12;0.32;0.12" dur="2.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-60,390 C100,350 225,430 390,382 C540,340 660,418 860,372"
+          stroke="#ffe9a8" stroke-width="6" opacity="0.25" stroke-dasharray="22 20">
+      <animate attributeName="stroke-dashoffset" values="0;-120" dur="3.1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.1;0.3;0.1" dur="2.4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-50,430 C130,395 260,462 430,420 C565,387 670,455 850,418"
+          stroke="#fff7db" stroke-width="5" opacity="0.2" stroke-dasharray="18 18">
+      <animate attributeName="stroke-dashoffset" values="0;-90" dur="2.9s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.08;0.24;0.08" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <g opacity="0.18">
+    <rect x="0" y="300" width="800" height="160" fill="#ffffff">
+      <animate attributeName="opacity" values="0.05;0.12;0.05" dur="2.6s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <g opacity="0.22">
+    <path d="M0,350 C90,340 160,370 240,350 C330,328 430,372 520,350 C620,325 710,360 800,346"
+          fill="none" stroke="#fff6dc" stroke-width="14" filter="url(#blurSoft)">
+      <animate attributeName="d"
+        dur="4.2s"
+        repeatCount="indefinite"
+        values="
+        M0,350 C90,340 160,370 240,350 C330,328 430,372 520,350 C620,325 710,360 800,346;
+        M0,356 C90,332 160,378 240,356 C330,334 430,364 520,356 C620,332 710,352 800,352;
+        M0,350 C90,340 160,370 240,350 C330,328 430,372 520,350 C620,325 710,360 800,346"/>
+    </path>
+  </g>
+</svg>

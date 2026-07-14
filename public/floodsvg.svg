@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flood Animation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #2c3e50; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, t = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+class Drop {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W * 1.2 - W * 0.1;
+    this.y = Math.random() * -H;
+    this.speed = 5 + Math.random() * 7;
+    this.len = 10 + Math.random() * 14;
+    this.opacity = 0.12 + Math.random() * 0.28;
+  }
+  update() { this.x -= 1.2; this.y += this.speed; if (this.y > H) this.reset(); }
+  draw() {
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x + 1.2, this.y - this.len);
+    ctx.strokeStyle = `rgba(180,210,240,${this.opacity})`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+}
+
+const drops = [];
+for (let i = 0; i < 200; i++) drops.push(new Drop());
+
+class Debris {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = init ? Math.random() * W : -30 - Math.random() * 80;
+    this.speed = 0.3 + Math.random() * 0.7;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 0.02 + Math.random() * 0.03;
+    this.wobbleAmp = 2 + Math.random() * 3;
+    this.type = Math.floor(Math.random() * 4);
+    this.rot = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.02;
+    this.size = 5 + Math.random() * 8;
+    this.yOffset = Math.random() * 20;
+  }
+  update(baseY) {
+    this.x += this.speed;
+    this.wobble += this.wobbleSpeed;
+    this.y = baseY + this.yOffset + Math.sin(this.wobble) * this.wobbleAmp;
+    this.rot += this.rotSpeed;
+    if (this.x > W + 50) this.reset(false);
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    if (this.type === 0) {
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(-this.size, -2.5, this.size * 2, 5);
+    } else if (this.type === 1) {
+      ctx.fillStyle = '#c4a035';
+      ctx.beginPath(); ctx.arc(0, 0, this.size * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a08020'; ctx.lineWidth = 1; ctx.stroke();
+    } else if (this.type === 2) {
+      ctx.fillStyle = '#4a7a20';
+      ctx.beginPath(); ctx.ellipse(0, 0, this.size * 0.5, this.size * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#8B6914';
+      ctx.fillRect(-this.size * 0.7, -2, this.size * 1.4, 4);
+    }
+    ctx.restore();
+  }
+}
+
+const debris = [];
+for (let i = 0; i < 14; i++) debris.push(new Debris());
+
+function getFloodLevel() {
+  const cycle = (t % 2000) / 2000;
+  if (cycle < 0.25) return cycle / 0.25;
+  if (cycle < 0.65) return 1;
+  if (cycle < 0.9) return 1 - (cycle - 0.65) / 0.25;
+  return 0;
+}
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.35);
+  grad.addColorStop(0, '#2a3a4a');
+  grad.addColorStop(0.5, '#3d4f5f');
+  grad.addColorStop(1, '#5a6e78');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H * 0.35);
+}
+
+function drawClouds() {
+  const clouds = [
+    { x: ((t * 0.12) % (W + 300)) - 150, y: H * 0.06, s: 1.1 },
+    { x: ((t * 0.08 + 400) % (W + 400)) - 200, y: H * 0.12, s: 1.4 },
+    { x: W * 0.5, y: H * 0.04, s: 1.0 },
+  ];
+  clouds.forEach(c => {
+    ctx.fillStyle = 'rgba(55,65,75,0.75)';
+    const r = 25 * c.s;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x - r * 0.8, c.y + 4, r * 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x + r * 0.85, c.y + 3, r * 0.75, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x + r * 0.2, c.y - r * 0.5, r * 0.65, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+function drawFarHills() {
+  ctx.fillStyle = '#3a5530';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.30);
+  ctx.quadraticCurveTo(W * 0.15, H * 0.22, W * 0.3, H * 0.28);
+  ctx.quadraticCurveTo(W * 0.5, H * 0.20, W * 0.72, H * 0.26);
+  ctx.quadraticCurveTo(W * 0.88, H * 0.21, W, H * 0.25);
+  ctx.lineTo(W, H * 0.36);
+  ctx.lineTo(0, H * 0.36);
+  ctx.fill();
+}
+
+function drawFarmGround() {
+  const gy = H * 0.34;
+  const riverTop = H * 0.72;
+
+  const farmGrad = ctx.createLinearGradient(0, gy, 0, riverTop);
+  farmGrad.addColorStop(0, '#5a8a38');
+  farmGrad.addColorStop(0.3, '#4a7530');
+  farmGrad.addColorStop(0.7, '#3d6528');
+  farmGrad.addColorStop(1, '#4a6a2a');
+  ctx.fillStyle = farmGrad;
+  ctx.fillRect(0, gy, W, riverTop - gy);
+
+  // Field furrows
+  ctx.strokeStyle = 'rgba(30,55,15,0.25)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 15; i++) {
+    const y = gy + 25 + i * ((riverTop - gy - 30) / 15);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+function drawCropRows(floodWaterY) {
+  const gy = H * 0.34;
+  const riverTop = H * 0.72;
+
+  // Left crop section
+  for (let row = 0; row < 10; row++) {
+    const ry = riverTop - 15 - row * 18;
+    if (ry < gy + 10) break;
+    if (ry > floodWaterY - 5) continue; // submerged
+    for (let col = 0; col < 7; col++) {
+      const rx = W * 0.03 + col * 24;
+      ctx.fillStyle = '#2d7a10';
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - 3, ry + 8);
+      ctx.lineTo(rx + 3, ry + 8);
+      ctx.fill();
+      ctx.fillStyle = '#3a9918';
+      ctx.beginPath();
+      ctx.ellipse(rx, ry - 1, 4, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Right crop section
+  for (let row = 0; row < 10; row++) {
+    const ry = riverTop - 15 - row * 18;
+    if (ry < gy + 10) break;
+    if (ry > floodWaterY - 5) continue;
+    for (let col = 0; col < 7; col++) {
+      const rx = W * 0.72 + col * 24;
+      if (rx > W * 0.95) continue;
+      ctx.fillStyle = '#c4a030';
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx, ry - 12);
+      ctx.stroke();
+      ctx.fillStyle = '#d4b040';
+      ctx.beginPath();
+      ctx.ellipse(rx, ry - 13, 3, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawBarn() {
+  const bx = W * 0.42, by = H * 0.36;
+  const bw = W * 0.09, bh = H * 0.12;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.fillRect(bx - bw / 2 + 5, by + bh - 3, bw, 6);
+
+  // Barn body
+  ctx.fillStyle = '#a03020';
+  ctx.fillRect(bx - bw / 2, by, bw, bh);
+
+  // Barn side shading
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(bx, by, bw / 2, bh);
+
+  // Roof
+  ctx.fillStyle = '#6a1a0a';
+  ctx.beginPath();
+  ctx.moveTo(bx - bw / 2 - 10, by);
+  ctx.lineTo(bx, by - bh * 0.45);
+  ctx.lineTo(bx + bw / 2 + 10, by);
+  ctx.fill();
+
+  // Door
+  ctx.fillStyle = '#5a1808';
+  const dw = bw * 0.28, dh = bh * 0.55;
+  ctx.fillRect(bx - dw / 2, by + bh - dh, dw, dh);
+  // Door cross
+  ctx.strokeStyle = '#7a2818';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bx - dw / 2, by + bh - dh);
+  ctx.lineTo(bx + dw / 2, by + bh);
+  ctx.moveTo(bx + dw / 2, by + bh - dh);
+  ctx.lineTo(bx - dw / 2, by + bh);
+  ctx.stroke();
+
+  // Windows
+  ctx.fillStyle = '#e8c040';
+  ctx.fillRect(bx - bw * 0.35, by + bh * 0.15, bw * 0.15, bw * 0.12);
+  ctx.fillRect(bx + bw * 0.2, by + bh * 0.15, bw * 0.15, bw * 0.12);
+
+  // Silo
+  const sx = bx + bw / 2 + 16, sw = 16;
+  ctx.fillStyle = '#aaa';
+  ctx.fillRect(sx, by - bh * 0.05, sw, bh * 1.05);
+  ctx.fillStyle = '#bbb';
+  ctx.beginPath();
+  ctx.ellipse(sx + sw / 2, by - bh * 0.05, sw / 2, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Silo bands
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    const sy = by + bh * 0.1 + i * bh * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + sw, sy);
+    ctx.stroke();
+  }
+}
+
+function drawHouse() {
+  const hx = W * 0.68, hy = H * 0.40;
+  const hw = W * 0.06, hh = H * 0.09;
+
+  ctx.fillStyle = '#d4c4a0';
+  ctx.fillRect(hx - hw / 2, hy, hw, hh);
+
+  ctx.fillStyle = '#5a3a2a';
+  ctx.beginPath();
+  ctx.moveTo(hx - hw / 2 - 6, hy);
+  ctx.lineTo(hx, hy - hh * 0.5);
+  ctx.lineTo(hx + hw / 2 + 6, hy);
+  ctx.fill();
+
+  // Chimney
+  ctx.fillStyle = '#7a5540';
+  ctx.fillRect(hx + hw * 0.2, hy - hh * 0.55, 8, hh * 0.35);
+
+  ctx.fillStyle = '#6a4a30';
+  ctx.fillRect(hx - hw * 0.12, hy + hh * 0.45, hw * 0.24, hh * 0.55);
+
+  ctx.fillStyle = '#88c8e8';
+  ctx.fillRect(hx - hw * 0.38, hy + hh * 0.2, hw * 0.18, hw * 0.14);
+  ctx.fillRect(hx + hw * 0.2, hy + hh * 0.2, hw * 0.18, hw * 0.14);
+}
+
+function drawFences(floodWaterY) {
+  const riverTop = H * 0.72;
+  ctx.strokeStyle = '#6a5030';
+  ctx.lineWidth = 2;
+
+  // Fence near river
+  for (let i = 0; i < Math.floor(W / 45); i++) {
+    const fx = 15 + i * 45;
+    const fy = riverTop - 8;
+    if (fy > floodWaterY) continue;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy - 16);
+    ctx.lineTo(fx, fy + 2);
+    ctx.stroke();
+    if (i < Math.floor(W / 45) - 1) {
+      const nx = fx + 45;
+      ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(nx, fy - 12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fx, fy - 4); ctx.lineTo(nx, fy - 4); ctx.stroke();
+    }
+  }
+}
+
+function drawTree(x, y, s) {
+  ctx.fillStyle = '#3a2510';
+  ctx.fillRect(x - 3 * s, y, 6 * s, 22 * s);
+  ctx.fillStyle = '#2a6a18';
+  ctx.beginPath(); ctx.arc(x, y - 4 * s, 16 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1e5512';
+  ctx.beginPath(); ctx.arc(x - 7 * s, y + 2 * s, 11 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 9 * s, y - 1 * s, 12 * s, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawWindmill() {
+  const wx = W * 0.22, wy = H * 0.34;
+  ctx.fillStyle = '#ccc';
+  ctx.beginPath();
+  ctx.moveTo(wx - 5, wy + 6);
+  ctx.lineTo(wx + 5, wy + 6);
+  ctx.lineTo(wx + 3.5, wy + H * 0.14);
+  ctx.lineTo(wx - 3.5, wy + H * 0.14);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(wx, wy + 5);
+  ctx.rotate(t * 0.025);
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -24); ctx.stroke();
+    ctx.fillStyle = 'rgba(190,190,190,0.45)';
+    ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(5, -13); ctx.lineTo(0, -24); ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = '#888';
+  ctx.beginPath(); ctx.arc(wx, wy + 5, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawRiver() {
+  const riverTop = H * 0.72;
+  const riverBot = H * 0.88;
+
+  // River banks
+  ctx.fillStyle = '#5a4a2a';
+  ctx.fillRect(0, riverTop - 5, W, 8);
+  ctx.fillRect(0, riverBot - 2, W, 8);
+
+  // River bed
+  const rGrad = ctx.createLinearGradient(0, riverTop, 0, riverBot);
+  rGrad.addColorStop(0, '#2a5a7a');
+  rGrad.addColorStop(0.5, '#1e4a6a');
+  rGrad.addColorStop(1, '#1a3e5a');
+  ctx.fillStyle = rGrad;
+  ctx.fillRect(0, riverTop, W, riverBot - riverTop);
+
+  // River flow waves
+  ctx.strokeStyle = 'rgba(120,180,210,0.3)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 10; i++) {
+    const wy = riverTop + 8 + i * ((riverBot - riverTop - 16) / 10);
+    const offset = (t * 2 + i * 50) % 80;
+    for (let j = -1; j < W / 80 + 1; j++) {
+      const sx = j * 80 + offset;
+      ctx.beginPath();
+      ctx.moveTo(sx, wy);
+      ctx.quadraticCurveTo(sx + 20, wy - 3, sx + 40, wy);
+      ctx.stroke();
+    }
+  }
+
+  // Surface shimmer
+  ctx.strokeStyle = 'rgba(160,210,240,0.18)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const sy = riverTop + 5 + i * 12;
+    const sx = ((t * 1.5 + i * 120) % (W + 60)) - 30;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + Math.sin(t * 0.04 + i) * 2);
+    ctx.lineTo(sx + 20 + Math.random() * 15, sy + Math.sin(t * 0.04 + i + 1) * 2);
+    ctx.stroke();
+  }
+}
+
+function drawGroundBelow() {
+  const riverBot = H * 0.88;
+  const gGrad = ctx.createLinearGradient(0, riverBot, 0, H);
+  gGrad.addColorStop(0, '#4a6a2a');
+  gGrad.addColorStop(1, '#3a5520');
+  ctx.fillStyle = gGrad;
+  ctx.fillRect(0, riverBot, W, H - riverBot);
+}
+
+function drawFloodWater(floodLevel) {
+  const riverTop = H * 0.72;
+  const maxRise = H * 0.30;
+  const floodRise = floodLevel * maxRise;
+  const floodWaterY = riverTop - floodRise;
+
+  if (floodLevel <= 0.02) return riverTop;
+
+  // Flood water filling farmland from river upward
+  const wGrad = ctx.createLinearGradient(0, floodWaterY, 0, riverTop);
+  wGrad.addColorStop(0, 'rgba(55,105,135,0.6)');
+  wGrad.addColorStop(0.4, 'rgba(48,90,120,0.72)');
+  wGrad.addColorStop(1, 'rgba(35,70,100,0.82)');
+  ctx.fillStyle = wGrad;
+
+  // Wavy top edge
+  ctx.beginPath();
+  const steps = 50;
+  for (let i = 0; i <= steps; i++) {
+    const px = (W / steps) * i;
+    const wave = Math.sin(px * 0.025 + t * 0.045) * 4
+               + Math.sin(px * 0.04 - t * 0.03) * 2.5
+               + Math.sin(px * 0.015 + t * 0.06) * 3;
+    if (i === 0) ctx.moveTo(px, floodWaterY + wave);
+    else ctx.lineTo(px, floodWaterY + wave);
+  }
+  ctx.lineTo(W, riverTop);
+  ctx.lineTo(0, riverTop);
+  ctx.closePath();
+  ctx.fill();
+
+  // Water surface highlights
+  ctx.strokeStyle = 'rgba(130,185,215,0.3)';
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 12; i++) {
+    const hy = floodWaterY + 8 + i * (floodRise / 14);
+    if (hy > riverTop - 5) break;
+    const hx = ((t * 1.2 + i * 90) % (W + 50)) - 25;
+    const hw = 18 + Math.sin(t * 0.03 + i * 1.5) * 10;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.quadraticCurveTo(hx + hw / 2, hy - 1.5 + Math.sin(t * 0.04 + i) * 1.5, hx + hw, hy);
+    ctx.stroke();
+  }
+
+  // Vertical overflow streaks from river
+  if (floodLevel > 0.15) {
+    ctx.strokeStyle = 'rgba(80,140,180,0.15)';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 20; i++) {
+      const sx = (i / 20) * W + Math.sin(t * 0.02 + i) * 10;
+      const sy = riverTop - 2;
+      const ey = floodWaterY + 15 + Math.sin(t * 0.03 + i * 2) * 8;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + Math.sin(t * 0.05 + i) * 5, ey);
+      ctx.stroke();
+    }
+  }
+
+  return floodWaterY;
+}
+
+function drawLightning() {
+  if (Math.random() > 0.995) {
+    ctx.fillStyle = `rgba(255,255,240,${0.1 + Math.random() * 0.12})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,200,0.85)';
+    ctx.lineWidth = 2;
+    const lx = W * 0.15 + Math.random() * W * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    let ly = 0;
+    while (ly < H * 0.35) {
+      ly += 12 + Math.random() * 20;
+      ctx.lineTo(lx + (Math.random() - 0.5) * 35, ly);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawAnimal(x, y, type) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (type === 0) { // cow
+    ctx.fillStyle = '#eee';
+    ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.ellipse(-3, -1, 3, 2.5, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(4, 1, 2.5, 2, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#eee';
+    ctx.beginPath(); ctx.arc(-10, -2, 3.5, 0, Math.PI * 2); ctx.fill();
+    // legs
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(-5, 10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5, 10); ctx.stroke();
+  } else { // chicken
+    ctx.fillStyle = '#e8d0a0';
+    ctx.beginPath(); ctx.ellipse(0, 0, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e8d0a0';
+    ctx.beginPath(); ctx.arc(-5, -2, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d44';
+    ctx.beginPath(); ctx.arc(-5, -4.5, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#da5';
+    ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-10, -1.5); ctx.lineTo(-8, -1); ctx.fill();
+    ctx.strokeStyle = '#c80'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-1, 3); ctx.lineTo(-1, 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2, 3); ctx.lineTo(2, 6); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function animate() {
+  t++;
+  ctx.clearRect(0, 0, W, H);
+
+  const floodLevel = getFloodLevel();
+
+  drawSky();
+  drawClouds();
+  drawFarHills();
+  drawFarmGround();
+
+  const floodWaterY = drawFloodWater(floodLevel);
+
+  drawCropRows(floodWaterY);
+  drawFences(floodWaterY);
+  drawBarn();
+  drawHouse();
+  drawWindmill();
+  drawTree(W * 0.08, H * 0.36, 0.75);
+  drawTree(W * 0.55, H * 0.35, 0.85);
+  drawTree(W * 0.90, H * 0.37, 0.7);
+
+  // Animals on non-flooded ground
+  const riverTop = H * 0.72;
+  if (floodWaterY > H * 0.58) {
+    drawAnimal(W * 0.32, H * 0.56, 0);
+    drawAnimal(W * 0.36, H * 0.59, 0);
+    drawAnimal(W * 0.80, H * 0.54, 1);
+    drawAnimal(W * 0.83, H * 0.56, 1);
+    drawAnimal(W * 0.85, H * 0.55, 1);
+  } else {
+    // Animals flee upward
+    const fleeY = Math.max(H * 0.38, floodWaterY - 20);
+    drawAnimal(W * 0.30 - floodLevel * 30, fleeY, 0);
+    drawAnimal(W * 0.34 - floodLevel * 25, fleeY + 4, 0);
+    drawAnimal(W * 0.82 + floodLevel * 20, fleeY - 2, 1);
+    drawAnimal(W * 0.85 + floodLevel * 15, fleeY + 2, 1);
+  }
+
+  // Redraw flood water on top for depth
+  if (floodLevel > 0.02) {
+    ctx.fillStyle = 'rgba(45,90,120,0.25)';
+    ctx.beginPath();
+    for (let i = 0; i <= 50; i++) {
+      const px = (W / 50) * i;
+      const wave = Math.sin(px * 0.025 + t * 0.045) * 3 + Math.sin(px * 0.04 - t * 0.03) * 2;
+      if (i === 0) ctx.moveTo(px, floodWaterY + wave);
+      else ctx.lineTo(px, floodWaterY + wave);
+    }
+    ctx.lineTo(W, riverTop);
+    ctx.lineTo(0, riverTop);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Debris on flood
+  debris.forEach(d => {
+    if (floodLevel > 0.15) {
+      d.update(floodWaterY + 2);
+      d.draw();
+    }
+  });
+
+  drawRiver();
+  drawGroundBelow();
+
+  drops.forEach(d => { d.update(); d.draw(); });
+  drawLightning();
+
+  // Dark vignette
+  const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.75);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>

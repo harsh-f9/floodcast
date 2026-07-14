@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 100% 97%;
+    /* #eef7ff */
+    --foreground: 210 24% 16%;
+
+    --card: 210 100% 97%;
+    /* #eef7ff */
+    --card-foreground: 210 24% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 24% 16%;
+
+    /* UN Blue - #009EDB */
+    --primary: 197 100% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Dark Gray for navigation */
+    --secondary: 0 0% 27%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16.3% 46.9%;
+
+    --accent: 197 100% 43%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 197 100% 43%;
+
+    --radius: 0rem;
+
+    /* Theme colors */
+    --un-blue: 197 100% 43%;
+    --un-dark-gray: 0 0% 27%;
+    --un-light-gray: 0 0% 96%;
+  }
+
+  .dark {
+    --background: 210 24% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 210 24% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 210 24% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 197 100% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 24% 16%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 197 100% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 24% 20%;
+    --input: 210 24% 20%;
+    --ring: 197 100% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-24;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+}
