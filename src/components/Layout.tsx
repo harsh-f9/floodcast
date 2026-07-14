@@ -3,6 +3,10 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Home as HomeIcon } from "lucide-react";
 import croLogo from "@/assets/cro-logo.jpg";
 
+import iiitlLogo from "@/assets/iiitl-logo.png";
+import govtUpLogo from "@/assets/govt-up-logo.png";
+import reliefCommLogo from "@/assets/relief-commissioner-logo.jpg";
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -39,9 +43,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
-            <img src="/src/assets/iiitl-logo.png" alt="IIIT Lucknow" className="h-12 w-auto object-contain" />
-            <img src="/src/assets/govt-up-logo.png" alt="Govt of UP" className="h-12 w-auto object-contain" />
-            <img src="/src/assets/relief-commissioner-logo.jpg" alt="Relief Commissioner" className="h-12 w-auto object-contain" />
+            <img src={iiitlLogo} alt="IIIT Lucknow" className="h-12 w-auto object-contain" />
+            <img src={govtUpLogo} alt="Govt of UP" className="h-12 w-auto object-contain" />
+            <img src={reliefCommLogo} alt="Relief Commissioner" className="h-12 w-auto object-contain" />
           </div>
         </div>
       </header>
