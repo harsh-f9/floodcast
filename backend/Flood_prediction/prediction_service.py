@@ -141,43 +141,45 @@ def fetch_rainfall_batch(lat: float, lon: float, start_date: str, end_date: str)
 def fetch_rainfall_batch_multi(stations_coords: list[dict], start_date: str, end_date: str) -> list[dict]:
     """
     Fetch rainfall for multiple stations in parallel using Open-Meteo's location array feature.
-    stations_coords: list of dicts with {"station_id": id, "latitude": lat, "longitude": lon}
-    Returns a list of dicts:
-      [{"station_id": id, "daily": {"time": [...], "precipitation_sum": [...]}}]
+    Chunked into batches of 50 to avoid HTTP 414 Request-URI Too Large errors.
     """
     if not stations_coords:
         return []
         
-    try:
-        lats = [s["latitude"] for s in stations_coords]
-        lons = [s["longitude"] for s in stations_coords]
-        
-        r = requests.get("https://api.open-meteo.com/v1/forecast", params={
-            "latitude": lats,
-            "longitude": lons,
-            "daily": "precipitation_sum",
-            "start_date": start_date,
-            "end_date": end_date,
-            "timezone": "Asia/Kolkata"
-        }, timeout=60)
-        
-        r.raise_for_status()
-        res_list = r.json()
-        
-        if isinstance(res_list, dict):
-            res_list = [res_list]
+    chunk_size = 50
+    output = []
+    
+    for i in range(0, len(stations_coords), chunk_size):
+        chunk = stations_coords[i:i + chunk_size]
+        try:
+            lats = [s["latitude"] for s in chunk]
+            lons = [s["longitude"] for s in chunk]
             
-        output = []
-        for station, data in zip(stations_coords, res_list):
-            daily_data = data.get("daily", {})
-            output.append({
-                "station_id": station["station_id"],
-                "daily": daily_data
-            })
-        return output
-    except Exception as e:
-        print(f"⚠️  Multi-station batch rainfall fetch failed: {e}")
-        return []
+            r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+                "latitude": lats,
+                "longitude": lons,
+                "daily": "precipitation_sum",
+                "start_date": start_date,
+                "end_date": end_date,
+                "timezone": "Asia/Kolkata"
+            }, timeout=60)
+            
+            r.raise_for_status()
+            res_list = r.json()
+            
+            if isinstance(res_list, dict):
+                res_list = [res_list]
+                
+            for station, data in zip(chunk, res_list):
+                daily_data = data.get("daily", {})
+                output.append({
+                    "station_id": station["station_id"],
+                    "daily": daily_data
+                })
+        except Exception as e:
+            print(f"⚠️  Chunk multi-station batch rainfall fetch failed (indices {i} to {i+chunk_size}): {e}")
+            
+    return output
 
 
 # ── Return period computation ─────────────────────────────────────────
