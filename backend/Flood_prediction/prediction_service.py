@@ -138,6 +138,48 @@ def fetch_rainfall_batch(lat: float, lon: float, start_date: str, end_date: str)
         return {}
 
 
+def fetch_rainfall_batch_multi(stations_coords: list[dict], start_date: str, end_date: str) -> list[dict]:
+    """
+    Fetch rainfall for multiple stations in parallel using Open-Meteo's location array feature.
+    stations_coords: list of dicts with {"station_id": id, "latitude": lat, "longitude": lon}
+    Returns a list of dicts:
+      [{"station_id": id, "daily": {"time": [...], "precipitation_sum": [...]}}]
+    """
+    if not stations_coords:
+        return []
+        
+    try:
+        lats = [s["latitude"] for s in stations_coords]
+        lons = [s["longitude"] for s in stations_coords]
+        
+        r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+            "latitude": lats,
+            "longitude": lons,
+            "daily": "precipitation_sum",
+            "start_date": start_date,
+            "end_date": end_date,
+            "timezone": "Asia/Kolkata"
+        }, timeout=60)
+        
+        r.raise_for_status()
+        res_list = r.json()
+        
+        if isinstance(res_list, dict):
+            res_list = [res_list]
+            
+        output = []
+        for station, data in zip(stations_coords, res_list):
+            daily_data = data.get("daily", {})
+            output.append({
+                "station_id": station["station_id"],
+                "daily": daily_data
+            })
+        return output
+    except Exception as e:
+        print(f"⚠️  Multi-station batch rainfall fetch failed: {e}")
+        return []
+
+
 # ── Return period computation ─────────────────────────────────────────
 
 def compute_return_period(streamflow: float, rp_2: float, rp_5: float, rp_15: float) -> float:
@@ -278,7 +320,8 @@ def run_prediction_for_station(station_id: int, target_date: date) -> dict:
     from database import (
         get_station, get_rainfall_history, get_gauge_state,
         insert_rainfall, cleanup_old_rainfall,
-        insert_gauge_state, cleanup_old_gauge_state
+        insert_gauge_state, cleanup_old_gauge_state,
+        get_rainfall_for_date
     )
 
     station = get_station(station_id)
@@ -287,13 +330,17 @@ def run_prediction_for_station(station_id: int, target_date: date) -> dict:
 
     target_str = target_date.isoformat()
 
-    # ── 1. Fetch rainfall from Open-Meteo ─────────────────────────────
-    rainfall_mm = fetch_rainfall_mm(
-        station["latitude"], station["longitude"], target_str
-    )
+    # ── 1. Check if rainfall is already in database ───────────────────
+    db_rain = get_rainfall_for_date(station_id, target_str)
+    if db_rain is not None:
+        rainfall_mm = db_rain
+    else:
+        # Fetch from Open-Meteo as fallback
+        rainfall_mm = fetch_rainfall_mm(
+            station["latitude"], station["longitude"], target_str
+        )
+        insert_rainfall(station_id, target_str, rainfall_mm)
 
-    # ── 2. Append to rainfall history, clean old rows ─────────────────
-    insert_rainfall(station_id, target_str, rainfall_mm)
     cutoff_rain = (target_date - timedelta(days=60)).isoformat()
     cleanup_old_rainfall(station_id, cutoff_rain)
 
@@ -448,7 +495,7 @@ def sync_historical_predictions():
     Checks how far behind gauge_state is from date.today(), 
     and iterates forward day-by-day to accurately backfill missing days.
     """
-    from database import get_all_stations, get_gauge_state
+    from database import get_all_stations, get_gauge_state, insert_rainfall
     
     target_date = date.today()
     target_str  = target_date.isoformat()
@@ -459,6 +506,46 @@ def sync_historical_predictions():
     print(f"   Processing {len(stations)} stations...")
     print(f"{'='*60}")
 
+    # ── 1. Find the earliest missing date across all stations ───────────
+    earliest_missing = None
+    for station in stations:
+        flow_rows = get_gauge_state(station["station_id"], limit=1)
+        if flow_rows:
+            last_date = date.fromisoformat(flow_rows[0]["date"])
+            missing_start = last_date + timedelta(days=1)
+            if missing_start <= target_date:
+                if earliest_missing is None or missing_start < earliest_missing:
+                    earliest_missing = missing_start
+
+    # ── 2. Pre-fetch rainfall in a single multi-location batch call ───
+    if earliest_missing is not None:
+        start_str = earliest_missing.isoformat()
+        end_str = target_date.isoformat()
+        print(f"🌧️  Pre-fetching missing rainfall from {start_str} to {end_str} for all stations in one API request...")
+        
+        stations_coords = [
+            {"station_id": s["station_id"], "latitude": s["latitude"], "longitude": s["longitude"]}
+            for s in stations
+        ]
+        
+        multi_data = fetch_rainfall_batch_multi(stations_coords, start_str, end_str)
+        if multi_data:
+            inserted_count = 0
+            for item in multi_data:
+                sid = item["station_id"]
+                daily = item.get("daily", {})
+                dates = daily.get("time", [])
+                precips = daily.get("precipitation_sum", [])
+                
+                for d_str, p_val in zip(dates, precips):
+                    val = float(p_val) if p_val is not None else 0.0
+                    insert_rainfall(sid, d_str, val)
+                    inserted_count += 1
+            print(f"   Successfully pre-fetched & cached {inserted_count} rainfall records.")
+        else:
+            print("   ⚠️  Failed to pre-fetch rainfall in batch. Falls back to individual API calls during prediction.")
+
+    # ── 3. Run predictions as normal (will read rainfall from database cache) ───
     success = 0
     failed  = 0
     skipped = 0
@@ -466,7 +553,7 @@ def sync_historical_predictions():
     for idx, station in enumerate(stations):
         sid = station["station_id"]
         try:
-            # Find the most recent streamflow entry
+            # Find the most recent entry
             flow_rows = get_gauge_state(sid, limit=1)
             if not flow_rows:
                 skipped += 1

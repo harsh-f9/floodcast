@@ -22,7 +22,7 @@ from database import (
     get_all_stations, insert_rainfall, update_max_30d_rain,
     get_station_count, query_one
 )
-from prediction_service import fetch_rainfall_batch
+from prediction_service import fetch_rainfall_batch_multi
 
 BOOTSTRAP_DATE = date(2026, 7, 11)  # First prediction date
 LOOKBACK_DAYS = 60
@@ -54,31 +54,42 @@ def bootstrap():
     print(f"🌧️  Bootstrap: Fetching rainfall from {start_str} to {end_str}")
     print(f"   Stations: {len(stations)}")
     print(f"   Date range: {LOOKBACK_DAYS} days per station")
-    print(f"   API calls: ~{len(stations)} (batch mode)\n")
+    print(f"   API calls: 1 (multi-location batch mode)\n")
+
+    # Prepare multi-location payload
+    stations_coords = [
+        {"station_id": s["station_id"], "latitude": s["latitude"], "longitude": s["longitude"]}
+        for s in stations
+    ]
+
+    multi_data = fetch_rainfall_batch_multi(stations_coords, start_str, end_str)
 
     success = 0
     failed = 0
 
-    for idx, station in enumerate(stations):
-        sid = station["station_id"]
+    if not multi_data:
+        print("❌ Failed to fetch bootstrap rainfall data for the stations.")
+        return
+
+    for item in multi_data:
+        sid = item["station_id"]
+        daily = item.get("daily", {})
+        dates = daily.get("time", [])
+        precips = daily.get("precipitation_sum", [])
+
+        if not dates or not precips:
+            print(f"  ⚠️  Station {sid}: No rainfall data returned")
+            failed += 1
+            continue
+
         try:
-            # ── Fetch 60 days in one API call ─────────────────────────
-            rain_data = fetch_rainfall_batch(
-                station["latitude"], station["longitude"],
-                start_str, end_str
-            )
-
-            if not rain_data:
-                print(f"  ⚠️  Station {sid}: No rainfall data returned")
-                failed += 1
-                continue
-
             # ── Store each day's rainfall ─────────────────────────────
-            for date_str, rainfall_mm in rain_data.items():
-                insert_rainfall(sid, date_str, rainfall_mm)
+            for date_str, rainfall_mm in zip(dates, precips):
+                val = float(rainfall_mm) if rainfall_mm is not None else 0.0
+                insert_rainfall(sid, date_str, val)
 
             # ── Compute max_30d_rain ──────────────────────────────────
-            rain_values = list(rain_data.values())
+            rain_values = [float(p) if p is not None else 0.0 for p in precips]
             rain_series = pd.Series(rain_values)
 
             if len(rain_series) >= 30:
@@ -91,17 +102,9 @@ def bootstrap():
             update_max_30d_rain(sid, max_30d)
 
             success += 1
-            if (idx + 1) % 10 == 0 or idx == 0:
-                print(f"  ✅ [{idx+1}/{len(stations)}] Station {sid} | "
-                      f"days={len(rain_data)} | max_30d_rain={max_30d:.1f}mm")
-
-            # Small delay to be kind to the API
-            time.sleep(0.05)
-
         except Exception as e:
-            print(f"  ❌ Station {sid} failed: {e}")
+            print(f"  ❌ Station {sid} failed to process: {e}")
             failed += 1
-            continue
 
     print(f"\n{'='*60}")
     print(f"🎉 Bootstrap complete: {success} succeeded, {failed} failed")

@@ -135,6 +135,15 @@ def get_rainfall_history(station_id: int) -> list[dict]:
     )
 
 
+def get_rainfall_for_date(station_id: int, date_str: str) -> float | None:
+    """Get rainfall for a specific date and station, if exists."""
+    row = query_one(
+        "SELECT rainfall_mm FROM station_rainfall_history WHERE station_id = ? AND date = ?",
+        [station_id, date_str]
+    )
+    return row["rainfall_mm"] if row else None
+
+
 def get_gauge_state(station_id: int, limit: int = 2, before_date: str | None = None) -> list[dict]:
     """Get latest gauge_state rows for a station, ordered by date DESC.
 
