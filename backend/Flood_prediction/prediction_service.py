@@ -333,7 +333,7 @@ def build_feature_window(
 
 # ── Single-station prediction ────────────────────────────────────────
 
-def run_prediction_for_station(station_id: int, target_date: date) -> dict:
+def run_prediction_for_station(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
     """
     Run the full prediction pipeline for a single station on a given date.
     Returns the prediction result dict or raises an exception.
@@ -351,8 +351,13 @@ def run_prediction_for_station(station_id: int, target_date: date) -> dict:
         raise ValueError(f"Station {station_id} not found")
 
     target_str = target_date.isoformat()
+    
+    # ── 1. If client sent rainfall, insert it to seed the DB ─────────────
+    if client_rainfall:
+        for d_str, r_val in client_rainfall.items():
+            insert_rainfall(station_id, d_str, float(r_val))
 
-    # ── 1. Check if rainfall is already in database ───────────────────
+    # ── 2. Check if rainfall is already in database ───────────────────
     db_rain = get_rainfall_for_date(station_id, target_str)
     if db_rain is not None:
         rainfall_mm = db_rain
@@ -427,7 +432,7 @@ def run_prediction_for_station(station_id: int, target_date: date) -> dict:
 
 # ── Sequential Future Prediction (In-Memory Trajectory) ────────────────
 
-def predict_future_streamflow(station_id: int, target_date: date) -> dict:
+def predict_future_streamflow(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
     """
     Predict future streamflow recursively without modifying the database.
     Fetches rainfall forecasts dynamically and chains predictions internally.
@@ -458,11 +463,14 @@ def predict_future_streamflow(station_id: int, target_date: date) -> dict:
         last_raw = 0.0
         prev_raw = 0.0
 
-    # Fetch forecasted rainfall explicitly (from tomorrow up to target)
-    forecast_rain = fetch_rainfall_batch(
-        station["latitude"], station["longitude"], 
-        start_date.isoformat(), target_date.isoformat()
-    )
+    # If client passed rainfall, use it. Else fetch from backend.
+    if client_rainfall:
+        forecast_rain = client_rainfall
+    else:
+        forecast_rain = fetch_rainfall_batch(
+            station["latitude"], station["longitude"], 
+            start_date.isoformat(), target_date.isoformat()
+        )
     
     trajectory = []
     current_date = start_date
@@ -543,29 +551,10 @@ def sync_historical_predictions():
     if earliest_missing is not None:
         start_str = earliest_missing.isoformat()
         end_str = target_date.isoformat()
-        print(f"🌧️  Pre-fetching missing rainfall from {start_str} to {end_str} for all stations in one API request...")
-        
-        stations_coords = [
-            {"station_id": s["station_id"], "latitude": s["latitude"], "longitude": s["longitude"]}
-            for s in stations
-        ]
-        
-        multi_data = fetch_rainfall_batch_multi(stations_coords, start_str, end_str)
-        if multi_data:
-            inserted_count = 0
-            for item in multi_data:
-                sid = item["station_id"]
-                daily = item.get("daily", {})
-                dates = daily.get("time", [])
-                precips = daily.get("precipitation_sum", [])
-                
-                for d_str, p_val in zip(dates, precips):
-                    val = float(p_val) if p_val is not None else 0.0
-                    insert_rainfall(sid, d_str, val)
-                    inserted_count += 1
-            print(f"   Successfully pre-fetched & cached {inserted_count} rainfall records.")
-        else:
-            print("   ⚠️  Failed to pre-fetch rainfall in batch. Falls back to individual API calls during prediction.")
+        print(f"🌧️  Missing rainfall from {start_str} to {end_str}.")
+        print("❌ Render auto-sync is DISABLED to avoid Open-Meteo 429 bans.")
+        print("Please run `python local_bootstrap.py` on your laptop to push rainfall data.")
+        return
 
     # ── 3. Run predictions as normal (will read rainfall from database cache) ───
     success = 0

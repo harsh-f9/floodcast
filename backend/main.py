@@ -165,6 +165,12 @@ class PredictionRequest(BaseModel):
 class FloodPredictionRequest(BaseModel):
     station_id: int
     date: str  # ISO format: "2026-03-28"
+    client_rainfall_data: Optional[dict[str, float]] = None
+
+
+class AdminSyncRainfallRequest(BaseModel):
+    # Dictionary mapping station_id (str or int) to a dict of date -> rainfall_mm
+    station_data: dict[str, dict[str, float]]
 
 
 @app.get("/api/districts")
@@ -268,9 +274,9 @@ def predict_flood(req: FloodPredictionRequest):
         target_date = date.fromisoformat(req.date)
         if target_date > date.today():
             from prediction_service import predict_future_streamflow
-            result = predict_future_streamflow(req.station_id, target_date)
+            result = predict_future_streamflow(req.station_id, target_date, client_rainfall=req.client_rainfall_data)
         else:
-            result = run_prediction_for_station(req.station_id, target_date)
+            result = run_prediction_for_station(req.station_id, target_date, client_rainfall=req.client_rainfall_data)
             
         return result
     except ValueError as e:
@@ -323,5 +329,22 @@ def get_station_detail(station_id: int):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/sync-rainfall")
+def admin_sync_rainfall(req: AdminSyncRainfallRequest):
+    """
+    Endpoint for local bootstrap script to bulk insert historical rainfall.
+    Bypasses the need for Render backend to make Open-Meteo calls.
+    """
+    try:
+        total_inserted = 0
+        for station_id_str, daily_data in req.station_data.items():
+            station_id = int(station_id_str)
+            for date_str, rain_val in daily_data.items():
+                flood_db.insert_rainfall(station_id, date_str, float(rain_val))
+                total_inserted += 1
+        return {"success": True, "records_inserted": total_inserted}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

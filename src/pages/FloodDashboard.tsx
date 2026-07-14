@@ -76,6 +76,29 @@ function getRiskStatus(flow: number, station: StationDetail | null) {
   return { label: "EXTREME", lightClass: "bg-rose-100 text-rose-800", darkClass: "bg-rose-500/20 text-rose-300" };
 }
 
+async function fetchRainfallFromOpenMeteo(lat: number, lng: number, targetDateStr: string): Promise<Record<string, number>> {
+  const targetDate = new Date(targetDateStr);
+  const startDate = new Date(targetDate);
+  startDate.setDate(targetDate.getDate() - 60);
+  
+  const startStr = format(startDate, "yyyy-MM-dd");
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=precipitation_sum&start_date=${startStr}&end_date=${targetDateStr}&timezone=Asia%2FKolkata`;
+  
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Open-Meteo fetch failed");
+  const data = await res.json();
+  
+  const client_rainfall_data: Record<string, number> = {};
+  if (data && data.daily) {
+    const times = data.daily.time;
+    const precip = data.daily.precipitation_sum;
+    for (let i = 0; i < times.length; i++) {
+      client_rainfall_data[times[i]] = precip[i] || 0;
+    }
+  }
+  return client_rainfall_data;
+}
+
 export default function FloodDashboard() {
   const [stations, setStations] = useState<Station[]>([]);
   
@@ -224,6 +247,9 @@ export default function FloodDashboard() {
         }
         const detailData = await resDetail.json();
         
+        // 1.5 Fetch client rainfall from Open-Meteo
+        const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, "2026-07-21");
+
         // 2. Fetch future 7-day trajectory prediction
         const response = await fetch(getApiUrl("/predict"), {
           method: "POST",
@@ -232,7 +258,8 @@ export default function FloodDashboard() {
           },
           body: JSON.stringify({
             station_id: station.station_id,
-            date: "2026-07-21"
+            date: "2026-07-21",
+            client_rainfall_data: clientRainfall
           })
         });
         
@@ -313,6 +340,9 @@ export default function FloodDashboard() {
             if (!resDetail.ok) throw new Error("Fetch detail failed");
             const detailData = await resDetail.json();
             
+            // 1.5 Fetch client rainfall from Open-Meteo
+            const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, "2026-07-21");
+
             // 2. Fetch future 7-day trajectory prediction
             const response = await fetch(getApiUrl("/predict"), {
               method: "POST",
@@ -321,7 +351,8 @@ export default function FloodDashboard() {
               },
               body: JSON.stringify({
                 station_id: station.station_id,
-                date: "2026-07-21"
+                date: "2026-07-21",
+                client_rainfall_data: clientRainfall
               })
             });
             
@@ -489,12 +520,19 @@ export default function FloodDashboard() {
     try {
       setPredicting(true);
       setError(null);
+      
+      const station = stations.find(s => s.station_id === selectedStationId);
+      if (!station) throw new Error("Station not found");
+      
+      const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, targetDate);
+
       const res = await fetch(getApiUrl("/predict"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           station_id: selectedStationId,
           date: targetDate,
+          client_rainfall_data: clientRainfall
         }),
       });
       

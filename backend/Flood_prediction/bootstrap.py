@@ -51,16 +51,14 @@ def bootstrap():
     start_str = start_date.isoformat()
     end_str   = end_date.isoformat()
 
-    print(f"🌧️  Bootstrap: Fetching rainfall from {start_str} to {end_str}")
+    print(f"🌧️  Bootstrap: Waiting for manual rainfall sync from {start_str} to {end_str}")
     print(f"   Stations: {len(stations)}")
     print(f"   Date range: {LOOKBACK_DAYS} days per station")
-    print(f"   API calls: 1 (multi-location batch mode)\n")
+    print(f"   API calls: DISABLED on Render (Use local_bootstrap.py instead)\n")
 
-    # Prepare multi-location payload
-    stations_coords = [
-        {"station_id": s["station_id"], "latitude": s["latitude"], "longitude": s["longitude"]}
-        for s in stations
-    ]
+    print("❌ Render automatic bootstrap is DISABLED to avoid Open-Meteo 429 rate limit bans.")
+    print("Please run `python local_bootstrap.py` on your laptop to push rainfall data to the server!")
+    return
 
     multi_data = fetch_rainfall_batch_multi(stations_coords, start_str, end_str)
 
