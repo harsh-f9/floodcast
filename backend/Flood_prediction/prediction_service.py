@@ -335,85 +335,99 @@ def build_feature_window(
 
 def run_prediction_for_station(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
     """
-    Run the full prediction pipeline for a single station on a given date.
-    Returns the prediction result dict or raises an exception.
+    Predict streamflow for a given station and date.
+    Dynamically fills any historical gaps up to target_date and saves the results to DB.
     """
-    # Import here to avoid circular imports
     from database import (
         get_station, get_rainfall_history, get_gauge_state,
-        insert_rainfall, cleanup_old_rainfall,
-        insert_gauge_state, cleanup_old_gauge_state,
-        get_rainfall_for_date
+        insert_rainfall, insert_gauge_state, get_rainfall_for_date,
+        query_one
     )
-
+    
     station = get_station(station_id)
     if not station:
         raise ValueError(f"Station {station_id} not found")
-
+        
     target_str = target_date.isoformat()
     
-    # ── 1. If client sent rainfall, insert it to seed the DB ─────────────
-    if client_rainfall:
-        for d_str, r_val in client_rainfall.items():
-            insert_rainfall(station_id, d_str, float(r_val))
-
-    # ── 2. Check if rainfall is already in database ───────────────────
-    db_rain = get_rainfall_for_date(station_id, target_str)
-    if db_rain is not None:
-        rainfall_mm = db_rain
-    else:
-        # Fetch from Open-Meteo as fallback
-        rainfall_mm = fetch_rainfall_mm(
-            station["latitude"], station["longitude"], target_str
-        )
-        insert_rainfall(station_id, target_str, rainfall_mm)
-
-    cutoff_rain = (target_date - timedelta(days=60)).isoformat()
-    cleanup_old_rainfall(station_id, cutoff_rain)
-
-    # ── 3. Load rainfall history (last 60 days) ──────────────────────
+    # Reload rain history
     rain_history = get_rainfall_history(station_id)
     rain_series = pd.Series(
         [r["rainfall_mm"] for r in rain_history],
         index=pd.to_datetime([r["date"] for r in rain_history])
     )
-
-    # ── 4. Load gauge_state (last 2 flow values BEFORE target_date) ──
-    # We must restrict to dates < target_date so that re-running a prediction
-    # for the same date always anchors to yesterday's streamflow, not the
-    # value written by a previous run for today.
-    flow_rows = get_gauge_state(station_id, limit=2, before_date=target_str)
+    
+    # Fill any gaps leading up to target_date
+    flow_rows = get_gauge_state(station_id, limit=2)
     if flow_rows:
+        last_date = date.fromisoformat(flow_rows[0]["date"])
         last_raw = flow_rows[0]["raw_streamflow"]
         prev_raw = flow_rows[1]["raw_streamflow"] if len(flow_rows) > 1 else last_raw
     else:
+        last_date = target_date - timedelta(days=60)
         last_raw = 0.0
         prev_raw = 0.0
-
-    # ── 5. Build 15-row feature window ────────────────────────────────
-    df_window = build_feature_window(station, rain_series, last_raw, prev_raw, target_date)
-
-    # ── 6. Preprocess + Predict ────────────────────────────────────────
-    predictor = get_predictor()
-    x_dynamic, x_flat = preprocess_window(df_window, predictor)
-    result = predictor.predict(x_dynamic, x_flat, last_raw)
-
-    # ── 7. Write to gauge_state, clean old rows ──────────────────────
-    insert_gauge_state(station_id, target_str, result["pred_raw_streamflow"])
-    cutoff_gauge = (target_date - timedelta(days=20)).isoformat()
-    cleanup_old_gauge_state(station_id, cutoff_gauge)
-
-    # Convert the last row of df_window to a dictionary representing feature values used
+        
+    if last_date < target_date:
+        # Loop and fill gaps
+        current_date = last_date + timedelta(days=1)
+        forecast_rain = fetch_rainfall_batch(
+            station["latitude"], station["longitude"], 
+            current_date.isoformat(), target_date.isoformat()
+        )
+        predictor = get_predictor()
+        while current_date <= target_date:
+            current_str = current_date.isoformat()
+            db_flow_row_temp = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
+            if db_flow_row_temp is not None:
+                pred_raw_streamflow = db_flow_row_temp["raw_streamflow"]
+                db_rain = get_rainfall_for_date(station_id, current_str)
+                fetched_rain = db_rain if db_rain is not None else 0.0
+            else:
+                fetched_rain = forecast_rain.get(current_str, 0.0)
+                insert_rainfall(station_id, current_str, fetched_rain)
+                df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
+                x_dynamic, x_flat = preprocess_window(df_window, predictor)
+                result = predictor.predict(x_dynamic, x_flat, last_raw)
+                pred_raw_streamflow = result["pred_raw_streamflow"]
+                insert_gauge_state(station_id, current_str, pred_raw_streamflow)
+                
+            rain_series[pd.Timestamp(current_date)] = fetched_rain
+            prev_raw = last_raw
+            last_raw = pred_raw_streamflow
+            current_date += timedelta(days=1)
+            
+    # Now query target_date prediction values from DB to construct response
+    db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, target_str])
+    pred_raw_streamflow = db_flow_row["raw_streamflow"] if db_flow_row else 0.0
+    
+    # Get last raw BEFORE target_date for anchor_streamflow
+    flow_rows_before = get_gauge_state(station_id, limit=2, before_date=target_str)
+    if len(flow_rows_before) > 1:
+        # Since flow_rows_before includes target_date (which was written), the previous one is at index 1
+        anchor_streamflow = flow_rows_before[1]["raw_streamflow"]
+        prev_raw_t = flow_rows_before[1]["raw_streamflow"] # for window reconstruction
+    elif len(flow_rows_before) == 1:
+        anchor_streamflow = 0.0
+        prev_raw_t = 0.0
+    else:
+        anchor_streamflow = 0.0
+        prev_raw_t = 0.0
+        
+    pred_delta_raw = pred_raw_streamflow - anchor_streamflow
+    db_rain = get_rainfall_for_date(station_id, target_str)
+    rainfall_mm = db_rain if db_rain is not None else 0.0
+    
+    # Rebuild final df_window for target_date to return correct debug_features
+    df_window = build_feature_window(station, rain_series, anchor_streamflow, prev_raw_t, target_date)
     debug_features = df_window.iloc[-1].fillna(0).to_dict()
-
-    # Build the 15-day rainfall window for display
+    
     rain_window = []
     for i in range(15):
         row_date = target_date - timedelta(days=(14 - i))
-        row_date_str = row_date.isoformat()
         rain_mm = float(rain_series.get(pd.Timestamp(row_date), 0.0))
-        rain_window.append({"date": row_date_str, "rainfall_mm": round(rain_mm, 2)})
-
+        rain_window.append({"date": row_date.isoformat(), "rainfall_mm": round(rain_mm, 2)})
+        
     return {
         "station_id":           station_id,
         "station_name":         station["station_name"],
@@ -421,9 +435,9 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
         "longitude":            station["longitude"],
         "date":                 target_str,
         "rainfall_mm_fetched":  round(rainfall_mm, 2),
-        "pred_raw_streamflow":  round(result["pred_raw_streamflow"], 2),
-        "pred_delta_raw":       round(result["pred_delta_raw"], 2),
-        "anchor_streamflow":    round(last_raw, 2),
+        "pred_raw_streamflow":  round(pred_raw_streamflow, 2),
+        "pred_delta_raw":       round(pred_delta_raw, 2),
+        "anchor_streamflow":    round(anchor_streamflow, 2),
         "unit":                 "m³/s",
         "rain_window":          rain_window,
         "debug_features":       debug_features,
@@ -434,75 +448,149 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
 
 def predict_future_streamflow(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
     """
-    Predict future streamflow recursively without modifying the database.
-    Fetches rainfall forecasts dynamically and chains predictions internally.
+    Predict future streamflow recursively, dynamically filling gaps and saving predictions.
+    Fetches rainfall forecasts dynamically and chains predictions.
     """
-    from database import get_station, get_rainfall_history, get_gauge_state
+    from database import (
+        get_station, get_rainfall_history, get_gauge_state,
+        insert_rainfall, insert_gauge_state, get_rainfall_for_date,
+        query_one
+    )
     
     station = get_station(station_id)
     if not station:
         raise ValueError(f"Station {station_id} not found")
         
-    start_date = date.today() + timedelta(days=1)
-    if target_date < start_date:
-        raise ValueError("predict_future_streamflow called for non-future date")
-        
-    # Load historical rainfall to seed the window memory
+    today = date.today()
+    
+    # Load rainfall history
     rain_history = get_rainfall_history(station_id)
     rain_series = pd.Series(
         [r["rainfall_mm"] for r in rain_history],
         index=pd.to_datetime([r["date"] for r in rain_history])
     )
     
-    # Load actual original gauge states
+    # Get last known gauge state from DB
     flow_rows = get_gauge_state(station_id, limit=2)
     if flow_rows:
+        last_date = date.fromisoformat(flow_rows[0]["date"])
         last_raw = flow_rows[0]["raw_streamflow"]
         prev_raw = flow_rows[1]["raw_streamflow"] if len(flow_rows) > 1 else last_raw
     else:
+        last_date = today - timedelta(days=60)
         last_raw = 0.0
         prev_raw = 0.0
+        
+    # Step 1: Backfill any past missing days up to date.today()
+    if last_date < today:
+        current_date = last_date + timedelta(days=1)
+        forecast_rain = fetch_rainfall_batch(
+            station["latitude"], station["longitude"], 
+            current_date.isoformat(), today.isoformat()
+        )
+        predictor = get_predictor()
+        while current_date <= today:
+            current_str = current_date.isoformat()
+            db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
+            if db_flow_row is not None:
+                pred_raw_streamflow = db_flow_row["raw_streamflow"]
+                db_rain = get_rainfall_for_date(station_id, current_str)
+                fetched_rain = db_rain if db_rain is not None else 0.0
+            else:
+                fetched_rain = forecast_rain.get(current_str, 0.0)
+                insert_rainfall(station_id, current_str, fetched_rain)
+                df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
+                x_dynamic, x_flat = preprocess_window(df_window, predictor)
+                result = predictor.predict(x_dynamic, x_flat, last_raw)
+                pred_raw_streamflow = result["pred_raw_streamflow"]
+                insert_gauge_state(station_id, current_str, pred_raw_streamflow)
+            
+            rain_series[pd.Timestamp(current_date)] = fetched_rain
+            prev_raw = last_raw
+            last_raw = pred_raw_streamflow
+            current_date += timedelta(days=1)
 
-    # If client passed rainfall, use it. Else fetch from backend.
+    # Reload last known gauge state (now guaranteed to be today or later)
+    flow_rows = get_gauge_state(station_id, limit=2)
+    last_date = date.fromisoformat(flow_rows[0]["date"])
+    last_raw = flow_rows[0]["raw_streamflow"]
+    prev_raw = flow_rows[1]["raw_streamflow"] if len(flow_rows) > 1 else last_raw
+
+    # Step 2: Calculate future trajectory starting from today + 1
+    start_date = today + timedelta(days=1)
     if client_rainfall:
         forecast_rain = client_rainfall
     else:
-        forecast_rain = fetch_rainfall_batch(
-            station["latitude"], station["longitude"], 
-            start_date.isoformat(), target_date.isoformat()
-        )
-    
+        if target_date >= start_date:
+            forecast_rain = fetch_rainfall_batch(
+                station["latitude"], station["longitude"], 
+                start_date.isoformat(), target_date.isoformat()
+            )
+        else:
+            forecast_rain = {}
+            
     trajectory = []
     current_date = start_date
     predictor = get_predictor()
     
+    # Save the window in case loop doesn't execute
+    df_window = None
+    
     while current_date <= target_date:
         current_str = current_date.isoformat()
+        db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
         
-        # Add forecasted rain to the rolling series
-        fetched_rain = forecast_rain.get(current_str, 0.0)
+        if db_flow_row is not None:
+            pred_raw_streamflow = db_flow_row["raw_streamflow"]
+            db_rain = get_rainfall_for_date(station_id, current_str)
+            fetched_rain = db_rain if db_rain is not None else 0.0
+            pred_delta_raw = pred_raw_streamflow - last_raw
+        else:
+            fetched_rain = forecast_rain.get(current_str, 0.0)
+            insert_rainfall(station_id, current_str, fetched_rain)
+            df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
+            x_dynamic, x_flat = preprocess_window(df_window, predictor)
+            result = predictor.predict(x_dynamic, x_flat, last_raw)
+            pred_raw_streamflow = result["pred_raw_streamflow"]
+            pred_delta_raw = result["pred_delta_raw"]
+            insert_gauge_state(station_id, current_str, pred_raw_streamflow)
+            
         rain_series[pd.Timestamp(current_date)] = fetched_rain
-        
-        # Build window & Predict in memory
-        df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
-        x_dynamic, x_flat = preprocess_window(df_window, predictor)
-        result = predictor.predict(x_dynamic, x_flat, last_raw)
         
         trajectory.append({
             "date": current_str,
             "anchor_streamflow": round(last_raw, 2),
             "rainfall_mm_fetched": round(fetched_rain, 2),
-            "pred_delta_raw": round(result["pred_delta_raw"], 2),
-            "pred_raw_streamflow": round(result["pred_raw_streamflow"], 2)
+            "pred_delta_raw": round(pred_delta_raw, 2),
+            "pred_raw_streamflow": round(pred_raw_streamflow, 2)
         })
         
-        # Update iteration buffers for the next day
         prev_raw = last_raw
-        last_raw = result["pred_raw_streamflow"]
-        
+        last_raw = pred_raw_streamflow
         current_date += timedelta(days=1)
         
-    # Build debug features and 15-day rain window for the final target_date step
+    # Rebuild final df_window for target_date to return correct debug_features
+    if df_window is None:
+        flow_rows_before = get_gauge_state(station_id, limit=3, before_date=target_date.isoformat())
+        if len(flow_rows_before) > 1:
+            if flow_rows_before[0]["date"] == target_date.isoformat():
+                last_raw_t = flow_rows_before[1]["raw_streamflow"]
+                prev_raw_t = flow_rows_before[2]["raw_streamflow"] if len(flow_rows_before) > 2 else last_raw_t
+            else:
+                last_raw_t = flow_rows_before[0]["raw_streamflow"]
+                prev_raw_t = flow_rows_before[1]["raw_streamflow"]
+        elif len(flow_rows_before) == 1:
+            if flow_rows_before[0]["date"] == target_date.isoformat():
+                last_raw_t = 0.0
+                prev_raw_t = 0.0
+            else:
+                last_raw_t = flow_rows_before[0]["raw_streamflow"]
+                prev_raw_t = last_raw_t
+        else:
+            last_raw_t = 0.0
+            prev_raw_t = 0.0
+        df_window = build_feature_window(station, rain_series, last_raw_t, prev_raw_t, target_date)
+
     debug_features = df_window.iloc[-1].fillna(0).to_dict()
 
     rain_window = []

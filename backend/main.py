@@ -178,6 +178,11 @@ class AdminSyncRainfallRequest(BaseModel):
     station_data: dict[str, dict[str, float]]
 
 
+class AdminSyncStreamflowRequest(BaseModel):
+    # Dictionary mapping station_id (str or int) to a dict of date -> raw_streamflow
+    station_data: dict[str, dict[str, float]]
+
+
 @app.get("/api/districts")
 def get_districts():
     return {"districts": sorted(list(UP_DISTRICTS.keys()))}
@@ -349,6 +354,23 @@ def admin_sync_rainfall(req: AdminSyncRainfallRequest):
             station_id = int(station_id_str)
             for date_str, rain_val in daily_data.items():
                 flood_db.insert_rainfall(station_id, date_str, float(rain_val))
+                total_inserted += 1
+        return {"success": True, "records_inserted": total_inserted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/sync-streamflow")
+def admin_sync_streamflow(req: AdminSyncStreamflowRequest):
+    """
+    Endpoint for local recalibration script to bulk insert actual observed streamflow.
+    Overwrites any forecasted streamflow with actual ground-truth.
+    """
+    try:
+        total_inserted = 0
+        for station_id_str, daily_data in req.station_data.items():
+            station_id = int(station_id_str)
+            for date_str, flow_val in daily_data.items():
+                flood_db.insert_gauge_state(station_id, date_str, float(flow_val))
                 total_inserted += 1
         return {"success": True, "records_inserted": total_inserted}
     except Exception as e:
