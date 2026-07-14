@@ -85,7 +85,7 @@ const FlippableMagneticCard = ({ project, magneticStrength = 20 }: FlippableMagn
           }}
         >
           {/* Background Animation Effect */}
-          {isHovered && project.effectType && <ProjectEffect type={project.effectType} />}
+          {project.effectType && <ProjectEffect type={project.effectType} />}
           {/* Top Right Utility Icons (i button and redirect link) */}
           <div className="absolute top-2 right-2 flex gap-2 z-10">
             <button
