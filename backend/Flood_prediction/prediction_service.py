@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import requests
 from datetime import date, timedelta
+import time
 
 # Add deploy directory to path so predictor.py can import flood_lstm
 DEPLOY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "deploy")
@@ -178,6 +179,9 @@ def fetch_rainfall_batch_multi(stations_coords: list[dict], start_date: str, end
                 })
         except Exception as e:
             print(f"⚠️  Chunk multi-station batch rainfall fetch failed (indices {i} to {i+chunk_size}): {e}")
+            
+        # Add a small delay between chunks to avoid 429 Too Many Requests
+        time.sleep(2)
             
     return output
 
