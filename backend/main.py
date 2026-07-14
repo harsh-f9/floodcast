@@ -58,6 +58,11 @@ def startup():
         print(f"\n⚠️  Flood Prediction startup error: {e}")
         print("   The /predict endpoint may not work until this is resolved.")
 
+@app.get("/")
+def read_root():
+    """Health check endpoint for Render."""
+    return {"status": "ok", "message": "CRO Flood Prediction API is live!"}
+
 
 @app.on_event("shutdown")
 def shutdown():
