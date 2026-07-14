@@ -43,15 +43,15 @@ def startup():
             bootstrap()
 
         # 2. Run startup validation
-        run_validation()
+        # run_validation()
 
         # 3. Start the daily scheduler
         start_scheduler()
 
         # 4. Asynchronously launch historical missing predictions auto-sync
-        import threading
-        from prediction_service import sync_historical_predictions
-        threading.Thread(target=sync_historical_predictions, daemon=True, name="AutoSyncThread").start()
+        # import threading
+        # from prediction_service import sync_historical_predictions
+        # threading.Thread(target=sync_historical_predictions, daemon=True, name="AutoSyncThread").start()
 
         print("\n🌊 Flood Prediction system fully initialized!")
     except Exception as e:
