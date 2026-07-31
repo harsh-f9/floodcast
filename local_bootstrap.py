@@ -3,11 +3,16 @@ import time
 import json
 from datetime import date, timedelta
 
-# Update this to your deployed Render backend URL when you deploy
-BACKEND_URL = "https://floodcast-backend-vx1j.onrender.com"
+import sys
+import os
+
+# Update this to your deployed backend URL (Render or Vercel)
+# Can also be passed via command line argument: python local_bootstrap.py https://your-app.vercel.app
+DEFAULT_BACKEND = "https://floodcast-backend-vx1j.onrender.com"
+BACKEND_URL = sys.argv[1] if len(sys.argv) > 1 else os.getenv("BACKEND_URL", DEFAULT_BACKEND)
 
 # Setup the dates
-BOOTSTRAP_DATE = date(2026, 7, 11)  # First prediction date
+BOOTSTRAP_DATE = date(2026, 7, 16)  # Set to July 16, 2026 based on streamflow availability
 LOOKBACK_DAYS = 60
 start_date = BOOTSTRAP_DATE - timedelta(days=LOOKBACK_DAYS)
 end_date = BOOTSTRAP_DATE - timedelta(days=1)

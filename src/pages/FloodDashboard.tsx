@@ -842,15 +842,41 @@ export default function FloodDashboard() {
               </CardHeader>
               <CardContent className="pt-4 flex flex-col gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Target Date</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">Target Date</label>
+                    <span className="text-[10px] font-medium text-gray-400">Past 60 days to +7 days forecast</span>
+                  </div>
                   <input 
                     type="date" 
-                    min={format(subDays(new Date(), 2), "yyyy-MM-dd")}
+                    min={format(subDays(new Date(), 60), "yyyy-MM-dd")}
                     max={format(addDays(new Date(), 7), "yyyy-MM-dd")}
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
                     className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-[#0a3d62] outline-none transition-all"
                   />
+                  <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setTargetDate("2026-07-16")}
+                      className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-medium text-[11px] transition-colors whitespace-nowrap border border-indigo-100"
+                    >
+                      July 16 (Last Actual)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTargetDate(format(subDays(new Date(), 30), "yyyy-MM-dd"))}
+                      className="px-2.5 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md font-medium text-[11px] transition-colors whitespace-nowrap"
+                    >
+                      1 Month Ago
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTargetDate(format(new Date(), "yyyy-MM-dd"))}
+                      className="px-2.5 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md font-medium text-[11px] transition-colors whitespace-nowrap"
+                    >
+                      Today
+                    </button>
+                  </div>
                 </div>
                 
                 <button

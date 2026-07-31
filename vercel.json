@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/predict",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/stations",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/station/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/heatwave-risk-up",
+      "destination": "/api/index.py"
+    }
+  ]
+}

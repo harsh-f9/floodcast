@@ -3,8 +3,10 @@ import csv
 import sys
 import os
 
-# Update this to your deployed Render backend URL
-BACKEND_URL = "https://floodcast-backend-vx1j.onrender.com"
+# Update this to your deployed backend URL (Render or Vercel)
+# Can also be passed via command line argument: python upload_actuals.py https://your-app.vercel.app
+DEFAULT_BACKEND = "https://floodcast-backend-vx1j.onrender.com"
+BACKEND_URL = sys.argv[1] if len(sys.argv) > 1 else os.getenv("BACKEND_URL", DEFAULT_BACKEND)
 
 CSV_FILE = "actuals.csv"
 
