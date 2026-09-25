@@ -50,6 +50,10 @@ interface Station {
   station_name: string;
   latitude: number;
   longitude: number;
+  rp_2?: number;
+  rp_5?: number;
+  rp_15?: number;
+  rp_20?: number;
 }
 
 interface PredictionInfo {
@@ -314,9 +318,7 @@ export default function FloodDashboard() {
   };
 
   const runStateMasterPredict = async () => {
-    const pwd = prompt("Enter Master Password to run State-wide Predictions:");
-    if (pwd !== "cro") {
-      alert("Access Denied: Invalid Password");
+    if (!window.confirm("Run state-wide predictions for all stations? This issues ~378 /predict calls in chunks of 8.")) {
       return;
     }
     

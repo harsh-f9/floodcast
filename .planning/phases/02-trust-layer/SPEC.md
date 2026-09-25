@@ -1,0 +1,2 @@
+# Phase 02-trust-layer — SPEC.md
+Additive `ingested_at,source` cols + `quality_flags(station_id,date,flag,detail)` table. Flags: station_silent_48h, value_out_of_range (flow>rp_200 or <0), spike_vs_neighbors (district median). Fill `station_flow_percentiles` from test residuals per regime (baseflow/rising/peak §6). UI: staleness badge, confidence line, collapse debug_features. Proxy assets panel (DIST_SINK,UP_AREA,slp,urb_pc,attenuation,velocity). No retrain.

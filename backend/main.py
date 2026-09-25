@@ -36,6 +36,12 @@ def startup():
         # 1. Initialize and seed database
         flood_db.check_and_reset_database_if_needed()
         flood_db.init_tables()
+        try:
+            from migrations.runner import run_migrations
+
+            run_migrations()
+        except Exception as e:
+            print(f"migration notice: {e}")
         if flood_db.get_station_count() == 0:
             seed_flood_db()
             print("🌧️ Seeding complete. Running bootstrap rainfall history...")
@@ -349,13 +355,21 @@ def admin_sync_rainfall(req: AdminSyncRainfallRequest):
     Bypasses the need for Render backend to make Open-Meteo calls.
     """
     try:
+        try:
+            from Flood_prediction.validation import validate_date, validate_rainfall
+        except ImportError:
+            from validation import validate_date, validate_rainfall
+
         total_inserted = 0
         for station_id_str, daily_data in req.station_data.items():
             station_id = int(station_id_str)
             for date_str, rain_val in daily_data.items():
-                flood_db.insert_rainfall(station_id, date_str, float(rain_val))
+                validate_date(date_str)
+                flood_db.insert_rainfall(station_id, date_str, validate_rainfall(rain_val))
                 total_inserted += 1
         return {"success": True, "records_inserted": total_inserted}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -366,12 +380,20 @@ def admin_sync_streamflow(req: AdminSyncStreamflowRequest):
     Overwrites any forecasted streamflow with actual ground-truth.
     """
     try:
+        try:
+            from Flood_prediction.validation import validate_date, validate_streamflow
+        except ImportError:
+            from validation import validate_date, validate_streamflow
+
         total_inserted = 0
         for station_id_str, daily_data in req.station_data.items():
             station_id = int(station_id_str)
             for date_str, flow_val in daily_data.items():
-                flood_db.insert_gauge_state(station_id, date_str, float(flow_val))
+                validate_date(date_str)
+                flood_db.insert_gauge_state(station_id, date_str, validate_streamflow(flow_val))
                 total_inserted += 1
         return {"success": True, "records_inserted": total_inserted}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

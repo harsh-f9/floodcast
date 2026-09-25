@@ -15,6 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import (
     init_tables, execute, executemany, get_station_count, query_one
 )
+try:
+    from Flood_prediction.validation import validate_station_row, EXCLUDED_11
+except ImportError:
+    from validation import validate_station_row, EXCLUDED_11
 
 DEPLOY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "deploy")
 GAUGES_CSV = os.path.join(DEPLOY_DIR, "gauges_info.csv")
@@ -36,12 +40,20 @@ def seed():
     print(f"📖 Reading {GAUGES_CSV}...")
     gauges = pd.read_csv(GAUGES_CSV)
 
-    # Assign numeric station_id from row index
+    # Assign numeric station_id from original row order (stable IDs), then filter to 367
     gauges = gauges.reset_index(drop=True)
     gauges["station_id"] = gauges.index
-    gauges = gauges.rename(columns={"gauge_id": "station_name"})
 
     print(f"   Found {len(gauges)} stations.")
+    for _, r in gauges.iterrows():
+        validate_station_row(r.to_dict())
+
+    # Filter to 367 trained stations (exclude 11 EDA-5 gap gauges), keep original IDs
+    before = len(gauges)
+    gauges = gauges[~gauges["gauge_id"].isin(EXCLUDED_11)]
+    print(f"   Filtered {before} -> {len(gauges)} stations (excluded 11 untrained).")
+
+    gauges = gauges.rename(columns={"gauge_id": "station_name"})
 
     # ── 2. Load discharge_1007.csv ──────────────────────────────────
     print(f"📖 Reading {DISCHARGE_CSV}...")
