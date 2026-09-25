@@ -111,3 +111,11 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
 }
+/* Snake teaser: gentle bob for the apple fruit */
+@keyframes apple-bob {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.animate-apple-bob {
+  animation: apple-bob 1.6s ease-in-out infinite;
+}

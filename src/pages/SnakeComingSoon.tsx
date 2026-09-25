@@ -12,8 +12,6 @@ import {
   type Pt,
 } from "@/lib/snakeLogic";
 
-const COLS = 24;
-const ROWS = 16;
 const START_INTERVAL = 150;
 const MIN_INTERVAL = 70;
 
@@ -26,6 +24,14 @@ const DIRS: Record<string, Pt> = {
   right: { x: 1, y: 0 },
 };
 
+interface Dims {
+  cols: number;
+  rows: number;
+  cell: number;
+  w: number;
+  h: number;
+}
+
 function loadBest(): number {
   try {
     return Number(localStorage.getItem("cro-snake-best") ?? 0) || 0;
@@ -34,12 +40,24 @@ function loadBest(): number {
   }
 }
 
+const mod = (v: number, m: number) => ((v % m) + m) % m;
+
 export default function SnakeComingSoon() {
   const [snake, setSnake] = useState<Pt[]>(() => createInitialSnake());
-  const [apple, setApple] = useState<Pt>(() => spawnApple(createInitialSnake(), COLS, ROWS));
+  const [apple, setApple] = useState<Pt>(() => spawnApple(createInitialSnake(), 24, 16));
   const [status, setStatus] = useState<Status>("running");
   const [score, setScore] = useState(0);
   const [best, setBest] = useState<number>(() => loadBest());
+  const [dims, setDims] = useState<Dims>({ cols: 24, rows: 16, cell: 30, w: 0, h: 0 });
+
+  const playRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const outlineRef = useRef<SVGPathElement>(null);
+  const bodyRef = useRef<SVGPathElement>(null);
+  const blotchRef = useRef<SVGPathElement>(null);
+  const spineRef = useRef<SVGPathElement>(null);
+  const headRef = useRef<SVGGElement>(null);
+  const lettersRef = useRef<SVGGElement>(null);
 
   const dirRef = useRef<Pt>({ x: 1, y: 0 });
   const queueRef = useRef<Pt[]>([]);
@@ -47,14 +65,63 @@ export default function SnakeComingSoon() {
   const appleRef = useRef(apple);
   const statusRef = useRef(status);
   const scoreRef = useRef(score);
+  const dimsRef = useRef(dims);
+  const prevRef = useRef<Pt[] | null>(null);
+  const lastTickRef = useRef(0);
+  const intervalRef = useRef(START_INTERVAL);
   snakeRef.current = snake;
   appleRef.current = apple;
   statusRef.current = status;
   scoreRef.current = score;
+  dimsRef.current = dims;
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const interval = Math.max(MIN_INTERVAL, START_INTERVAL - score * 3);
+  intervalRef.current = interval;
+
+  // ---- measure the full-bleed invisible grid ----
+  useEffect(() => {
+    const el = playRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (!w || !h) return;
+      const cell = w < 640 ? 24 : 30;
+      const cols = Math.max(10, Math.floor(w / cell));
+      const rows = Math.max(8, Math.floor(h / cell));
+      const d = dimsRef.current;
+      if (d.cols === cols && d.rows === rows && d.cell === cell) return;
+      const nd = { cols, rows, cell, w, h };
+      dimsRef.current = nd;
+      setDims(nd);
+      // keep the snake + apple on the new grid (dedupe to avoid overlap)
+      const seen = new Set<string>();
+      const s = snakeRef.current
+        .map((p) => ({ x: mod(p.x, cols), y: mod(p.y, rows) }))
+        .filter((p) => {
+          const k = `${p.x},${p.y}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      const safe = s.length > 0 ? s : [{ x: 2, y: 1 }];
+      snakeRef.current = safe;
+      prevRef.current = null;
+      setSnake(safe);
+      const a = appleRef.current;
+      if (a.x >= cols || a.y >= rows || safe.some((c) => c.x === a.x && c.y === a.y)) {
+        const na = spawnApple(safe, cols, rows);
+        appleRef.current = na;
+        setApple(na);
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const turn = useCallback((d: Pt) => {
     const last = queueRef.current.length > 0 ? queueRef.current[queueRef.current.length - 1] : dirRef.current;
@@ -65,11 +132,17 @@ export default function SnakeComingSoon() {
   }, []);
 
   const restart = useCallback(() => {
+    const d = dimsRef.current;
     const fresh = createInitialSnake();
     dirRef.current = { x: 1, y: 0 };
     queueRef.current = [];
+    prevRef.current = null;
+    lastTickRef.current = performance.now();
+    snakeRef.current = fresh;
     setSnake(fresh);
-    setApple(spawnApple(fresh, COLS, ROWS));
+    const na = spawnApple(fresh, d.cols, d.rows);
+    appleRef.current = na;
+    setApple(na);
     setScore(0);
     setStatus("running");
   }, []);
@@ -78,7 +151,7 @@ export default function SnakeComingSoon() {
     setStatus((s) => (s === "running" ? "paused" : s === "paused" ? "running" : s));
   }, []);
 
-  // Game loop
+  // ---- logical game loop (grid ticks) ----
   useEffect(() => {
     if (status !== "running") return;
     const id = setInterval(() => {
@@ -87,7 +160,10 @@ export default function SnakeComingSoon() {
       if (queued && !isOpposite(queued, dirRef.current)) {
         dirRef.current = queued;
       }
-      const res = stepSnake(snakeRef.current, dirRef.current, appleRef.current, COLS, ROWS);
+      const d = dimsRef.current;
+      prevRef.current = snakeRef.current;
+      lastTickRef.current = performance.now();
+      const res = stepSnake(snakeRef.current, dirRef.current, appleRef.current, d.cols, d.rows);
       if (res.died) {
         setStatus("over");
         setBest((b) => {
@@ -101,14 +177,69 @@ export default function SnakeComingSoon() {
         });
         return;
       }
+      snakeRef.current = res.snake;
       setSnake(res.snake);
       if (res.ate) {
         setScore((s) => s + 1);
-        setApple(spawnApple(res.snake, COLS, ROWS));
+        const na = spawnApple(res.snake, d.cols, d.rows);
+        appleRef.current = na;
+        setApple(na);
       }
     }, interval);
     return () => clearInterval(id);
   }, [status, interval]);
+
+  // ---- smooth render loop (interpolates between grid ticks) ----
+  useEffect(() => {
+    let raf = 0;
+    const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
+      const d = dimsRef.current;
+      if (!d.w || !svgRef.current) return;
+      const curr = snakeRef.current;
+      if (curr.length === 0) return;
+      const prev = prevRef.current;
+      const st = statusRef.current;
+      let t = 1;
+      if (st === "running" && prev && prev.length > 0) {
+        t = Math.min(1, Math.max(0, (now - lastTickRef.current) / intervalRef.current));
+      }
+      const px = (p: Pt) => ({ x: (p.x + 0.5) * d.cell, y: (p.y + 0.5) * d.cell });
+      const pts = curr.map((c, i) => {
+        const p0 = prev?.[i];
+        const b = px(c);
+        if (!p0 || st !== "running") return b;
+        const a = px(p0);
+        // edge wrap: snap instead of streaking across the screen
+        if (Math.abs(p0.x - c.x) > 1 || Math.abs(p0.y - c.y) > 1) return b;
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      });
+      const dAttr = pts.length > 1
+        ? `M${pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L")}`
+        : `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)} L${(pts[0].x + 0.01).toFixed(1)} ${pts[0].y.toFixed(1)}`;
+      outlineRef.current?.setAttribute("d", dAttr);
+      bodyRef.current?.setAttribute("d", dAttr);
+      blotchRef.current?.setAttribute("d", dAttr);
+      spineRef.current?.setAttribute("d", dAttr);
+      // head follows the nose, rotated to the travel direction
+      const head = pts[0];
+      const dir = dirRef.current;
+      const ang = dir.x === 1 ? 0 : dir.x === -1 ? 180 : dir.y === 1 ? 90 : 270;
+      headRef.current?.setAttribute("transform", `translate(${head.x.toFixed(1)} ${head.y.toFixed(1)}) rotate(${ang})`);
+      // letters ride their segments (head letter sits lower, under the eye)
+      const g = lettersRef.current;
+      if (g) {
+        const kids = g.childNodes;
+        for (let i = 0; i < pts.length && i < kids.length; i++) {
+          const el = kids[i] as SVGTextElement;
+          el.setAttribute("x", pts[i].x.toFixed(1));
+          el.setAttribute("y", (pts[i].y + (i === 0 ? d.cell * 0.2 : 0)).toFixed(1));
+        }
+      }
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // Keyboard controls
   useEffect(() => {
@@ -147,52 +278,16 @@ export default function SnakeComingSoon() {
     else turn(dy > 0 ? DIRS.down : DIRS.up);
   };
 
-  // Map cells -> segment index for O(1) render lookup
-  const segIndex = new Map<string, number>();
-  snake.forEach((c, i) => segIndex.set(`${c.x},${c.y}`, i));
-
-  const cells = [];
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      const key = `${x},${y}`;
-      const si = segIndex.get(key);
-      const isApple = apple.x === x && apple.y === y;
-      if (si !== undefined) {
-        const isHead = si === 0;
-        cells.push(
-          <div
-            key={key}
-            data-testid="snake-segment"
-            data-letter={letterForSegment(si)}
-            title={letterForSegment(si)}
-            className={`flex items-center justify-center rounded-[4px] font-bold select-none ${
-              isHead ? "bg-green-700 text-white" : "bg-green-500 text-white"
-            } text-[10px] sm:text-xs md:text-sm leading-none`}
-          >
-            {letterForSegment(si)}
-          </div>
-        );
-      } else if (isApple) {
-        cells.push(
-          <div
-            key={key}
-            data-testid="apple"
-            className="flex items-center justify-center rounded-[4px] bg-white select-none text-sm sm:text-base md:text-lg leading-none"
-          >
-            🍎
-          </div>
-        );
-      } else {
-        cells.push(<div key={key} className="rounded-[4px] bg-white" />);
-      }
-    }
-  }
-
+  const { cell } = dims;
+  const bodyW = cell * 0.78;
   const revealed = Math.min(snake.length, PHRASE.length);
+  const initD = snake.length > 1
+    ? `M${snake.map((p) => `${((p.x + 0.5) * cell).toFixed(1)} ${((p.y + 0.5) * cell).toFixed(1)}`).join(" L")}`
+    : "";
 
   return (
-    <div className="min-h-screen bg-[#eef7ff] py-12 px-4 animate-fade-in font-sans">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#eef7ff] font-sans animate-fade-in flex flex-col">
+      <div className="max-w-5xl mx-auto w-full px-4 pt-12">
         <Link
           to="/projects"
           className="inline-flex items-center text-[#0a3d62] hover:text-blue-800 font-semibold mb-8 transition-colors"
@@ -247,59 +342,157 @@ export default function SnakeComingSoon() {
           </div>
           <p className="text-xs text-gray-500 mt-2">
             Starts as <b>COM</b>. Every 🍎 grows the snake by one letter — then it cycles C→O→M→I→… endlessly.
-            Endless box: crossing any edge wraps around.
+            The invisible grid spans the whole field below, edge to edge with no walls.
           </p>
         </div>
+      </div>
 
-        {/* Board */}
-        <div className="relative">
-          <div
-            data-testid="snake-board"
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-            className="grid gap-[2px] bg-[#d7e3ee] p-[6px] rounded-2xl shadow-xl touch-none select-none"
-            style={{
-              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-              aspectRatio: `${COLS} / ${ROWS}`,
-            }}
+      {/* Full-bleed invisible grid — no box, no boundary, edge to edge */}
+      <div
+        ref={playRef}
+        data-testid="snake-board"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="relative w-full overflow-hidden touch-none select-none flex-1"
+        style={{ minHeight: 420, height: "52vh" }}
+      >
+        <svg ref={svgRef} className="absolute inset-0" width={dims.w} height={dims.h}>
+          <defs>
+            <linearGradient id="gmBody" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7ba23a" />
+              <stop offset="55%" stopColor="#4e7320" />
+              <stop offset="100%" stopColor="#31490f" />
+            </linearGradient>
+            <filter id="gmShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#0a3d62" floodOpacity="0.25" />
+            </filter>
+          </defs>
+          <g filter="url(#gmShadow)" strokeLinecap="round" strokeLinejoin="round" fill="none">
+            <path ref={outlineRef} d={initD} stroke="#2c3a0e" strokeWidth={cell} />
+            <path ref={bodyRef} d={initD} stroke="url(#gmBody)" strokeWidth={bodyW} />
+            <path
+              ref={blotchRef}
+              d={initD}
+              stroke="#33420f"
+              strokeWidth={bodyW}
+              strokeDasharray={`${(cell * 0.9).toFixed(1)} ${(cell * 1.1).toFixed(1)}`}
+              opacity={0.55}
+            />
+            <path ref={spineRef} d={initD} stroke="#a4c05e" strokeWidth={Math.max(2, cell * 0.16)} opacity={0.45} />
+          </g>
+
+          {/* head with eye + flicking forked tongue, styled like the card art */}
+          <g ref={headRef}>
+            <circle r={cell * 0.55} fill="url(#gmBody)" stroke="#2c3a0e" strokeWidth={Math.max(2, cell * 0.07)} />
+            <g transform={`translate(${(-cell * 0.05).toFixed(1)} ${(-cell * 0.26).toFixed(1)})`}>
+              <g>
+                <animateTransform
+                  attributeName="transform"
+                  type="scale"
+                  values="1 1; 1 1; 1 0.1; 1 1; 1 1"
+                  keyTimes="0; 0.88; 0.93; 0.98; 1"
+                  dur="5s"
+                  repeatCount="indefinite"
+                />
+                <ellipse rx={cell * 0.17} ry={cell * 0.18} fill="#f5c542" stroke="#2c3a0e" strokeWidth={Math.max(1.5, cell * 0.04)} />
+                <rect x={-cell * 0.035} y={-cell * 0.15} width={cell * 0.07} height={cell * 0.3} rx={cell * 0.035} fill="#141a05" />
+                <circle cx={-cell * 0.06} cy={-cell * 0.07} r={cell * 0.04} fill="#ffffff" opacity={0.9} />
+              </g>
+            </g>
+            <g transform={`translate(${(cell * 0.52).toFixed(1)} ${(cell * 0.08).toFixed(1)})`}>
+              <g>
+                <animateTransform
+                  attributeName="transform"
+                  type="scale"
+                  values="0.15; 1; 1; 0.15; 0.15"
+                  keyTimes="0; 0.1; 0.5; 0.62; 1"
+                  dur="3.4s"
+                  repeatCount="indefinite"
+                />
+                <path
+                  d={`M0,0 L${(cell * 0.5).toFixed(1)},${(-cell * 0.06).toFixed(1)} M${(cell * 0.5).toFixed(1)},${(-cell * 0.06).toFixed(1)} L${(cell * 0.8).toFixed(1)},${(-cell * 0.26).toFixed(1)} M${(cell * 0.5).toFixed(1)},${(-cell * 0.06).toFixed(1)} L${(cell * 0.8).toFixed(1)},${(cell * 0.14).toFixed(1)}`}
+                  fill="none"
+                  stroke="#d63a2f"
+                  strokeWidth={Math.max(2.5, cell * 0.11)}
+                  strokeLinecap="round"
+                />
+              </g>
+            </g>
+          </g>
+
+          {/* dense bold letters riding each segment */}
+          <g ref={lettersRef} fontWeight={900} fill="#ffffff" textAnchor="middle" dominantBaseline="central">
+            {snake.map((p, i) => (
+              <text
+                key={i}
+                data-testid="snake-segment"
+                data-letter={letterForSegment(i)}
+                x={((p.x + 0.5) * cell).toFixed(1)}
+                y={((p.y + 0.5) * cell + (i === 0 ? cell * 0.2 : 0)).toFixed(1)}
+                fontSize={i === 0 ? cell * 0.36 : cell * 0.55}
+                stroke="#2c3a0e"
+                strokeWidth={Math.max(2, cell * 0.08)}
+                paintOrder="stroke"
+              >
+                {letterForSegment(i)}
+              </text>
+            ))}
+          </g>
+        </svg>
+
+        {/* apple */}
+        <div
+          data-testid="apple"
+          className="absolute left-0 top-0"
+          style={{
+            transform: `translate3d(${((apple.x + 0.5) * cell).toFixed(1)}px, ${((apple.y + 0.5) * cell).toFixed(1)}px, 0)`,
+            width: cell,
+            height: cell,
+          }}
+        >
+          <span
+            className="animate-apple-bob flex items-center justify-center w-full h-full"
+            style={{ fontSize: cell * 0.95, filter: "drop-shadow(0 3px 3px rgba(10,61,98,0.3))" }}
           >
-            {cells}
-          </div>
-
-          {status !== "running" && (
-            <div className="absolute inset-0 rounded-2xl bg-[#0a3d62]/70 flex flex-col items-center justify-center gap-3 text-center p-6">
-              <p className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">
-                {status === "paused" ? "Paused" : "Game Over"}
-              </p>
-              <p className="text-white/80 text-sm font-semibold">
-                {status === "paused"
-                  ? "Press resume or hit Space to keep playing."
-                  : `You scored ${score} ${score === 1 ? "apple" : "apples"}. The snake spelled “${snakeLettersPreview(
-                      snake.length
-                    )}”.`}
-              </p>
-              <div className="flex gap-3">
-                {status === "paused" ? (
-                  <button
-                    onClick={togglePause}
-                    className="inline-flex items-center gap-2 bg-white text-[#0a3d62] font-bold text-sm px-5 py-2.5 rounded-lg hover:bg-gray-100"
-                  >
-                    <Play className="w-4 h-4" /> Resume
-                  </button>
-                ) : (
-                  <button
-                    onClick={restart}
-                    className="inline-flex items-center gap-2 bg-white text-[#0a3d62] font-bold text-sm px-5 py-2.5 rounded-lg hover:bg-gray-100"
-                  >
-                    <RotateCcw className="w-4 h-4" /> Play again
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+            🍎
+          </span>
         </div>
 
-        {/* Controls */}
+        {status !== "running" && (
+          <div className="absolute inset-0 bg-[#0a3d62]/70 flex flex-col items-center justify-center gap-3 text-center p-6 z-10">
+            <p className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">
+              {status === "paused" ? "Paused" : "Game Over"}
+            </p>
+            <p className="text-white/80 text-sm font-semibold">
+              {status === "paused"
+                ? "Press resume or hit Space to keep playing."
+                : `You scored ${score} ${score === 1 ? "apple" : "apples"}. The snake spelled “${snakeLettersPreview(
+                    snake.length
+                  )}”.`}
+            </p>
+            <div className="flex gap-3">
+              {status === "paused" ? (
+                <button
+                  onClick={togglePause}
+                  className="inline-flex items-center gap-2 bg-white text-[#0a3d62] font-bold text-sm px-5 py-2.5 rounded-lg hover:bg-gray-100"
+                >
+                  <Play className="w-4 h-4" /> Resume
+                </button>
+              ) : (
+                <button
+                  onClick={restart}
+                  className="inline-flex items-center gap-2 bg-white text-[#0a3d62] font-bold text-sm px-5 py-2.5 rounded-lg hover:bg-gray-100"
+                >
+                  <RotateCcw className="w-4 h-4" /> Play again
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="max-w-5xl mx-auto w-full px-4">
         <div className="flex flex-wrap items-center gap-3 mt-6">
           <button
             onClick={status === "over" ? restart : togglePause}
@@ -328,7 +521,7 @@ export default function SnakeComingSoon() {
             </button>
           )}
           <p className="text-xs text-gray-500 font-medium ml-auto hidden md:block">
-            Arrows / WASD to steer · Space to pause · endless wrap-around edges
+            Arrows / WASD to steer · Space to pause · no walls, edges wrap
           </p>
         </div>
 
@@ -350,7 +543,7 @@ export default function SnakeComingSoon() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-8">
+        <p className="text-center text-xs text-gray-400 mt-8 pb-10">
           Minimal Nokia-style demo — the full snakebite-risk model is coming soon.
         </p>
       </div>
