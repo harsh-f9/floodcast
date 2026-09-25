@@ -35,8 +35,9 @@ URL you set.
 ## What happens when the backend starts
 1. Tables + migrations ensured (safe to re-run).
 2. Seeds 367 stations only if the database is empty (normally skipped — your data stays).
-3. In the **background** (boot never waits): checks yesterday's river data;
-   downloads it once if missing, skips instantly if present. Watch for
+3. In the **background** (boot never waits): guarantees the anchor is never older than
+   the Sept floor (instant check, no heavy downloads on boot — free-tier RAM is limited).
+   Fresh latest-date pulls run from the laptop/CLI. Watch for
    `anchor result: {'status': 'present'|'anchored', ...}`.
 4. Starts the 6AM scheduler. Serves immediately at `http://localhost:8000`.
 
