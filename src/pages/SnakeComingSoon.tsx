@@ -67,6 +67,7 @@ export default function SnakeComingSoon() {
   const scoreRef = useRef(score);
   const dimsRef = useRef(dims);
   const prevRef = useRef<Pt[] | null>(null);
+  const pendingGrowthRef = useRef(0);
   const lastTickRef = useRef(0);
   const intervalRef = useRef(START_INTERVAL);
   snakeRef.current = snake;
@@ -137,6 +138,7 @@ export default function SnakeComingSoon() {
     dirRef.current = { x: 1, y: 0 };
     queueRef.current = [];
     prevRef.current = null;
+    pendingGrowthRef.current = 0;
     lastTickRef.current = performance.now();
     snakeRef.current = fresh;
     setSnake(fresh);
@@ -177,10 +179,16 @@ export default function SnakeComingSoon() {
         });
         return;
       }
+      if (!res.ate && pendingGrowthRef.current > 0 && prevRef.current && prevRef.current.length > 0) {
+        // eaten visually mid-tick by the render loop: regrow the popped tail
+        pendingGrowthRef.current -= 1;
+        res.snake.push(prevRef.current[prevRef.current.length - 1]);
+      }
       snakeRef.current = res.snake;
       setSnake(res.snake);
       if (res.ate) {
-        setScore((s) => s + 1);
+        scoreRef.current += 1;
+        setScore(scoreRef.current);
         const na = spawnApple(res.snake, d.cols, d.rows);
         appleRef.current = na;
         setApple(na);
@@ -223,6 +231,25 @@ export default function SnakeComingSoon() {
       spineRef.current?.setAttribute("d", dAttr);
       // head follows the nose, rotated to the travel direction
       const head = pts[0];
+      // pixel-accurate eating: what the nose visibly touches is what counts.
+      // (The logical tick eats a touch early/late vs. the smooth render, which
+      // made apples feel impossible to catch on the invisible grid.)
+      {
+        const a = appleRef.current;
+        const ax = (a.x + 0.5) * d.cell;
+        const ay = (a.y + 0.5) * d.cell;
+        const dx = head.x - ax;
+        const dy = head.y - ay;
+        const r = d.cell * 0.42;
+        if (statusRef.current === "running" && dx * dx + dy * dy < r * r) {
+          pendingGrowthRef.current += 1;
+          scoreRef.current += 1;
+          setScore(scoreRef.current);
+          const na = spawnApple(snakeRef.current, d.cols, d.rows);
+          appleRef.current = na;
+          setApple(na);
+        }
+      }
       const dir = dirRef.current;
       const ang = dir.x === 1 ? 0 : dir.x === -1 ? 180 : dir.y === 1 ? 90 : 270;
       headRef.current?.setAttribute("transform", `translate(${head.x.toFixed(1)} ${head.y.toFixed(1)}) rotate(${ang})`);
@@ -363,13 +390,10 @@ export default function SnakeComingSoon() {
               <stop offset="55%" stopColor="#4e7320" />
               <stop offset="100%" stopColor="#31490f" />
             </linearGradient>
-            <filter id="gmShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#0a3d62" floodOpacity="0.25" />
-            </filter>
           </defs>
-          <g filter="url(#gmShadow)" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <g strokeLinecap="round" strokeLinejoin="round" fill="none">
             <path ref={outlineRef} d={initD} stroke="#2c3a0e" strokeWidth={cell} />
-            <path ref={bodyRef} d={initD} stroke="url(#gmBody)" strokeWidth={bodyW} />
+            <path ref={bodyRef} d={initD} stroke="#55801f" strokeWidth={bodyW} />
             <path
               ref={blotchRef}
               d={initD}
