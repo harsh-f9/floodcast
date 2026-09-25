@@ -11,3 +11,8 @@ joblib>=1.3.0
 requests>=2.31.0
 APScheduler>=3.10.0
 pytz>=2023.3
+# GloFAS boot anchor (baseflow_glofas.py; lazy-imported, boot skips cleanly if absent)
+cdsapi>=0.7.0
+xarray>=2024.1.0
+cfgrib>=0.9.0
+eccodes>=2.30.0
