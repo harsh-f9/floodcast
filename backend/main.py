@@ -65,7 +65,25 @@ def startup():
         # 3. Start the daily scheduler
         start_scheduler()
 
-        # 4. Asynchronously launch historical missing predictions auto-sync
+        # 4. Yesterday-anchor in background (never blocks boot, never crashes boot).
+        # Fills gauge_state for latest-published GloFAS date; idempotent restarts are free.
+        def _auto_anchor():
+            if os.environ.get("FLOOD_CRON_DRY_RUN") == "1":
+                print("DRY_RUN: skipping yesterday anchor.")
+                return
+            try:
+                try:
+                    from Flood_prediction.baseflow_glofas import anchor_db_for_yesterday
+                except ImportError:
+                    from baseflow_glofas import anchor_db_for_yesterday
+                print("anchor result:", anchor_db_for_yesterday())
+            except Exception as e:
+                print(f"yesterday anchor skipped: {e}")
+
+        import threading
+        threading.Thread(target=_auto_anchor, daemon=True, name="AnchorThread").start()
+
+        # 5. Asynchronously launch historical missing predictions auto-sync
         # import threading
         # from prediction_service import sync_historical_predictions
         # threading.Thread(target=sync_historical_predictions, daemon=True, name="AutoSyncThread").start()

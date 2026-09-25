@@ -213,6 +213,72 @@ def convert_existing_csv(csv_path: str, target: datetime.date) -> tuple[str, str
     return save_outputs(target, rows, flows)
 
 
+def anchor_db_for_yesterday(lookback: int = 7) -> dict:
+    """Startup helper: fill gauge_state for latest-published date (default yesterday IST).
+
+    Idempotent: skips download when DB already has a fresh anchor; skips insert when
+    the resolved date is already fully present. Safe to run on every boot (laptop or
+    Render). All heavy imports lazy. Returns status dict, never raises past RuntimeError
+    for missing CDS credentials (caller logs and continues boot).
+    """
+    target = get_target_date(None)
+    try:
+        from Flood_prediction import database as db
+    except ImportError:
+        import database as db  # type: ignore
+    try:
+        row = db.query_one("SELECT MAX(date) AS d FROM gauge_state")
+        if row and row["d"] and row["d"] >= target.isoformat():
+            return {"status": "present", "date": row["d"]}
+    except Exception:
+        pass  # empty/unreadable DB: proceed to anchor
+
+    rows = load_gauge_coords()
+    north, south, east, west = bbox(rows)
+    resolved = target
+    flows: dict[str, float] = {}
+    for _ in range(max(lookback, 1)):
+        workdir = os.path.join(BASEFLOW_DIR, "tmp", resolved.strftime("%Y%m%d"))
+        os.makedirs(workdir, exist_ok=True)
+        try:
+            zip_path = download_glofas(resolved, north, south, east, west, workdir)
+            flows = map_flows(extract_flows(zip_path, rows, workdir), rows)
+            break
+        except Exception as e:
+            if "400" in str(e):
+                resolved = resolved - datetime.timedelta(days=1)
+                continue
+            raise
+    if not flows:
+        return {"status": "unpublished", "target": target.isoformat()}
+
+    try:
+        existing = db.query_one(
+            "SELECT COUNT(*) AS c FROM gauge_state WHERE date = ?", [resolved.isoformat()]
+        )
+        if existing and existing["c"] >= len(rows):
+            return {"status": "present", "date": resolved.isoformat()}
+    except Exception:
+        pass
+
+    try:
+        from Flood_prediction.validation import validate_date, validate_streamflow
+    except ImportError:
+        from validation import validate_date, validate_streamflow  # type: ignore
+    iso, n = resolved.isoformat(), 0
+    for r in rows:
+        v = flows.get(r["gauge_id"])
+        if v is None:
+            continue
+        try:
+            db.insert_gauge_state(r["station_id"], validate_date(iso), validate_streamflow(v))
+            n += 1
+        except ValueError:
+            continue  # skip NaN/negative: never fabricate anchor
+    save_outputs(resolved, rows, flows)  # audit CSV + sync JSON on disk
+    return {"status": "anchored", "date": iso, "stations": n}
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Fetch GloFAS base streamflow for previous date.")
     p.add_argument("--date", default=None, help="YYYY-MM-DD (default: yesterday IST)")

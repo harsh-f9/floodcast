@@ -1,4 +1,10 @@
-# OPS Runbook — laptop → Render push pipeline
+# OPS Runbook — laptop-first, Render as fallback mirror
+
+> Primary host is the **laptop** (`start_local.bat` → `http://localhost:8000`).
+> DB persists, no cold starts, scheduler works. Render section below is fallback only.
+> Interview-day procedure: see `INTERVIEW_GUIDE.md`.
+
+## Render (fallback mirror)
 
 ## Why the push model exists
 Calling Open-Meteo for all ~367 stations at once returns 429s. Render therefore
