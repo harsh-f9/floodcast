@@ -1,9 +1,13 @@
 """
 APScheduler-based daily cron for the Flood Prediction system.
-Runs predictions for all 367 stations at 6:00 AM IST every day.
+Push-model: Render never calls Open-Meteo in cron (anti-429); laptop pushes rain
+via /api/admin/sync-rainfall, Render chains predictions. Set FLOOD_CRON_DRY_RUN=1
+to start scheduler in dry-run (logs only, no Open-Meteo).
 
 Integrated into FastAPI via BackgroundScheduler (non-blocking).
 """
+
+import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -13,8 +17,12 @@ _scheduler: BackgroundScheduler | None = None
 
 
 def start_scheduler():
-    """Start the daily prediction scheduler (6:00 AM IST)."""
+    """Start the daily prediction scheduler (6:00 AM IST). Honors FLOOD_CRON_DRY_RUN."""
     global _scheduler
+
+    if os.environ.get("FLOOD_CRON_DRY_RUN") == "1":
+        print("DRY_RUN: scheduler not started (FLOOD_CRON_DRY_RUN=1). Laptop pushes rain; Render chains.")
+        return
 
     if _scheduler is not None and _scheduler.running:
         print("⚠️  Scheduler already running.")
