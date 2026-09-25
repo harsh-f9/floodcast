@@ -42,6 +42,33 @@ function loadBest(): number {
 
 const mod = (v: number, m: number) => ((v % m) + m) % m;
 
+// Build the body tube path, breaking it into separate subpaths wherever two
+// consecutive points sit on opposite edges (edge wrap). Without the breaks,
+// the tube would draw one long streak across the whole screen mid-wrap.
+function buildBodyD(pts: { x: number; y: number }[], cell: number): string {
+  if (pts.length === 0) return "";
+  const GAP = cell * 1.5;
+  let d = "";
+  let run: { x: number; y: number }[] = [pts[0]];
+  const flush = () => {
+    if (run.length === 0) return;
+    d += `M${run.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L")}`;
+    if (run.length === 1) d += " l 0.01 0"; // lone point still renders as a round dot
+  };
+  for (let i = 1; i < pts.length; i++) {
+    const a = run[run.length - 1];
+    const b = pts[i];
+    if (Math.hypot(b.x - a.x, b.y - a.y) > GAP) {
+      flush();
+      run = [b];
+    } else {
+      run.push(b);
+    }
+  }
+  flush();
+  return d;
+}
+
 export default function SnakeComingSoon() {
   const [snake, setSnake] = useState<Pt[]>(() => createInitialSnake());
   const [apple, setApple] = useState<Pt>(() => spawnApple(createInitialSnake(), 24, 16));
@@ -222,9 +249,7 @@ export default function SnakeComingSoon() {
         if (Math.abs(p0.x - c.x) > 1 || Math.abs(p0.y - c.y) > 1) return b;
         return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
       });
-      const dAttr = pts.length > 1
-        ? `M${pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L")}`
-        : `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)} L${(pts[0].x + 0.01).toFixed(1)} ${pts[0].y.toFixed(1)}`;
+      const dAttr = buildBodyD(pts, d.cell);
       outlineRef.current?.setAttribute("d", dAttr);
       bodyRef.current?.setAttribute("d", dAttr);
       blotchRef.current?.setAttribute("d", dAttr);
@@ -308,9 +333,10 @@ export default function SnakeComingSoon() {
   const { cell } = dims;
   const bodyW = cell * 0.78;
   const revealed = Math.min(snake.length, PHRASE.length);
-  const initD = snake.length > 1
-    ? `M${snake.map((p) => `${((p.x + 0.5) * cell).toFixed(1)} ${((p.y + 0.5) * cell).toFixed(1)}`).join(" L")}`
-    : "";
+  const initD = buildBodyD(
+    snake.map((p) => ({ x: (p.x + 0.5) * cell, y: (p.y + 0.5) * cell })),
+    cell
+  );
 
   return (
     <div className="min-h-screen bg-[#eef7ff] font-sans animate-fade-in flex flex-col">
