@@ -28,6 +28,17 @@ from prediction_service import run_prediction_for_station
 
 app = FastAPI(title="CRO Prediction API")
 
+try:
+    try:
+        from Flood_prediction.alerts import router as alerts_router
+    except ImportError:
+        from alerts import router as alerts_router
+    if alerts_router is not None:
+        app.include_router(alerts_router)
+        print("Alerts router mounted at /api/admin/alert-webhook.")
+except Exception as e:
+    print(f"Alerts router not mounted (log-only mode): {e}")
+
 
 @app.on_event("startup")
 def startup():
@@ -293,7 +304,16 @@ def predict_flood(req: FloodPredictionRequest):
             result = predict_future_streamflow(req.station_id, target_date, client_rainfall=req.client_rainfall_data)
         else:
             result = run_prediction_for_station(req.station_id, target_date, client_rainfall=req.client_rainfall_data)
-            
+
+        try:
+            try:
+                from Flood_prediction.version_stamp import build_stamp
+            except ImportError:
+                from version_stamp import build_stamp
+            result = {**result, **build_stamp()}
+        except Exception as e:
+            print(f"version stamp skipped: {e}")
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

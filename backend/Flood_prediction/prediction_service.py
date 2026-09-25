@@ -204,6 +204,19 @@ def fetch_rainfall_batch_multi(stations_coords: list[dict], start_date: str, end
 
 # ── Return period computation ─────────────────────────────────────────
 
+def clamp_flow(v: float) -> float:
+    """Physical guard: streamflow can't be negative (pipeline Phase-7 reconstruct uses max(0)).
+    Predictor (frozen contract) may overshoot on anchor discontinuities; clamp here so
+    chained state never carries unphysical values. Returns 0.0 for NaN."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    if f != f or f < 0.0:  # NaN or negative
+        return 0.0
+    return f
+
+
 def compute_return_period(streamflow: float, rp_2: float, rp_5: float, rp_15: float) -> float:
     """Compute estimated return period from streamflow and return period thresholds."""
     if streamflow < rp_2:
@@ -389,7 +402,7 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
                 df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
                 x_dynamic, x_flat = preprocess_window(df_window, predictor)
                 result = predictor.predict(x_dynamic, x_flat, last_raw)
-                pred_raw_streamflow = result["pred_raw_streamflow"]
+                pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
                 insert_gauge_state(station_id, current_str, pred_raw_streamflow)
                 
             rain_series[pd.Timestamp(current_date)] = fetched_rain
@@ -402,14 +415,11 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
     pred_raw_streamflow = db_flow_row["raw_streamflow"] if db_flow_row else 0.0
     
     # Get last raw BEFORE target_date for anchor_streamflow
+    # before_date excludes target, so index 0 is the latest actual before target.
     flow_rows_before = get_gauge_state(station_id, limit=2, before_date=target_str)
-    if len(flow_rows_before) > 1:
-        # Since flow_rows_before includes target_date (which was written), the previous one is at index 1
-        anchor_streamflow = flow_rows_before[1]["raw_streamflow"]
-        prev_raw_t = flow_rows_before[1]["raw_streamflow"] # for window reconstruction
-    elif len(flow_rows_before) == 1:
-        anchor_streamflow = 0.0
-        prev_raw_t = 0.0
+    if len(flow_rows_before) >= 1:
+        anchor_streamflow = flow_rows_before[0]["raw_streamflow"]
+        prev_raw_t = flow_rows_before[0]["raw_streamflow"]  # for window reconstruction
     else:
         anchor_streamflow = 0.0
         prev_raw_t = 0.0
@@ -502,7 +512,7 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
                 df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
                 x_dynamic, x_flat = preprocess_window(df_window, predictor)
                 result = predictor.predict(x_dynamic, x_flat, last_raw)
-                pred_raw_streamflow = result["pred_raw_streamflow"]
+                pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
                 insert_gauge_state(station_id, current_str, pred_raw_streamflow)
             
             rain_series[pd.Timestamp(current_date)] = fetched_rain
@@ -551,8 +561,8 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
             df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
             x_dynamic, x_flat = preprocess_window(df_window, predictor)
             result = predictor.predict(x_dynamic, x_flat, last_raw)
-            pred_raw_streamflow = result["pred_raw_streamflow"]
-            pred_delta_raw = result["pred_delta_raw"]
+            pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
+            pred_delta_raw = pred_raw_streamflow - last_raw
             insert_gauge_state(station_id, current_str, pred_raw_streamflow)
             
         rain_series[pd.Timestamp(current_date)] = fetched_rain
