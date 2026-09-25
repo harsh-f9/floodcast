@@ -36,8 +36,8 @@ DEFAULT_SUMMARY_MODEL = "nvidia/nemotron-3.5-lightning"  # summarizer layer; ove
 FALLBACK_MODEL = "nvidia/nemotron-3-super-120b-a12b"  # paid rescue; override via OPENROUTER_FALLBACK_MODEL
 MAX_TOOL_ROUNDS = 10  # generous: validation-repair cycles must never starve
 LLM_TIMEOUT_S = 120.0  # free-tier models can be slow; wait rather than fail
-LLM_MAX_TOKENS = 2000
-SUMMARY_MAX_TOKENS = 1000
+LLM_MAX_TOKENS = 20000
+SUMMARY_MAX_TOKENS = 20000
 PRIMARY_ATTEMPTS = 2  # tries on the free model before paid rescue
 FALLBACK_ATTEMPTS = 2
 
