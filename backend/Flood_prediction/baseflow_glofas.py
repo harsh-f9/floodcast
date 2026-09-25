@@ -219,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--from-csv", default=None, help="Convert existing extracted CSV instead of downloading")
     p.add_argument("--list-coords", action="store_true", help="Print gauge count + bbox, no download")
     p.add_argument("--workdir", default=None, help="Temp dir for zip/grib (default: deploy/baseflow/tmp)")
+    p.add_argument("--lookback", type=int, default=7,
+                   help="On CDS 400 (date not yet published), step back up to N days (default 7)")
     args = p.parse_args(argv)
 
     target = get_target_date(args.date)
@@ -235,10 +237,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     north, south, east, west = bbox(rows)
-    workdir = args.workdir or os.path.join(BASEFLOW_DIR, "tmp", target.strftime("%Y%m%d"))
-    os.makedirs(workdir, exist_ok=True)
-    print(f"target={target.isoformat()} gauges={len(rows)} area N{north} W{west} S{south} E{east}")
-    zip_path = download_glofas(target, north, south, east, west, workdir)
+    base_workdir = args.workdir or os.path.join(BASEFLOW_DIR, "tmp")
+    target_attempt = target
+    zip_path = grib_path = None
+    for attempt in range(max(args.lookback, 1)):
+        workdir = os.path.join(base_workdir, target_attempt.strftime("%Y%m%d"))
+        os.makedirs(workdir, exist_ok=True)
+        print(f"target={target_attempt.isoformat()} gauges={len(rows)} area N{north} W{west} S{south} E{east}")
+        try:
+            zip_path = download_glofas(target_attempt, north, south, east, west, workdir)
+            break
+        except Exception as e:
+            if "400" in str(e) and attempt + 1 < max(args.lookback, 1):
+                print(f"CDS 400 for {target_attempt.isoformat()} (not yet published); stepping back 1 day.")
+                target_attempt = target_attempt - datetime.timedelta(days=1)
+                continue
+            raise
+    target = target_attempt
+    assert zip_path is not None
     grib_path = extract_flows(zip_path, rows, workdir)
     flows = map_flows(grib_path, rows)
     csv_path, json_path = save_outputs(target, rows, flows)

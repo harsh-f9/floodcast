@@ -12,5 +12,17 @@ Automated anchor for future predictions. See `../baseflow_glofas.py` (migratable
 - `extracted_streamflow_YYYY_MM_DD.csv`: audit (gauge_id,latitude,longitude,streamflow_m3s), colab naming.
 - `sync_streamflow_YYYY-MM-DD.json`: `{station_id: {date: flow}}`, 367 stations (EXCLUDED_11 skipped, stable IDs = deploy order index).
 
+## Latency (verified 2026-09-25)
+GloFAS intermediate publishes with ~2-day lag: on Sep 25, Sep 24 AND Sep 23 both
+400 (`invalid request`), Sep 22 succeeds. Default run auto-steps back up to
+`--lookback 7` days and anchors on latest-published date. Filenames always carry
+the actual anchor date (not the requested one).
+
+## Anchoring
+- Local dev: direct insert via `database.insert_gauge_state` after `validation.py`
+  checks (backend can't boot locally without torch; endpoint path preferred where live).
+- Render prod: `POST sync JSON to /api/admin/sync-streamflow` (validates 400 on bad),
+  then `/predict` chains forward. Prod DB untouched by local runs.
+
 ## Example (verified 2026-09-25)
 `extracted_streamflow_2026_09_22.csv` (378→367) + `sync_streamflow_2026-09-22.json` (367 stations) from `downloading base streamflow data/extracted_streamflow_2026_09_22.csv`.

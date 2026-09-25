@@ -15,3 +15,8 @@ Date: 2026-09-25. Status: PASS (download path needs CDS key; conversion path ver
 - COMPILE_OK; --help OK; --list-coords: 367 gauges, bbox N30.0271 S24.0271 E84.5938 W77.0396, target 2026-09-24 (yesterday IST) OK.
 - --from-csv on 2026_09_22 file: audit CSV + sync JSON with 367 stations, keys 0/1/2 sample flows 0.1875/1063.38/194.64 OK. Ready to POST to /api/admin/sync-streamflow to anchor predictions.
 - Live download NOT run (no CDS key in session). Next: set CDS_API_KEY, run for yesterday, POST sync JSON, verify /predict chains.
+
+## Live run 2026-09-25 (CDS key configured)
+- `--date 2026-09-24` → CDS 400 invalid (not published); `--date 2026-09-22` → success (35.5k zip, 367 stations, flows 0.015–17322 m3/s). Latency ~2 days confirmed.
+- `--lookback 3` default run: 24th 400 → step back → 23rd 400 → step back → 22nd success. Filenames carry actual anchor date.
+- Local dev DB anchored: 367 rows 2026-09-22 via validated direct insert (max gauge_state 2026-07-14 → 2026-09-22). Prod Render DB untouched — POST sync JSON there on deploy.
