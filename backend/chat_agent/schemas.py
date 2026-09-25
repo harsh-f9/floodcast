@@ -32,6 +32,7 @@ class ToolTrace(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    request_id: str = ""
     reply: str
     raw_reply: str = ""
     tool_trace: list[ToolTrace] = []

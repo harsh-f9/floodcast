@@ -14,6 +14,7 @@ import logging
 import sqlite3
 import time
 
+from .log import event
 from .schema import MAX_SQL_ROWS
 from .sql_guard import validate_sql
 
@@ -47,7 +48,7 @@ def execute_sql(sql: str) -> dict:
     t0 = time.monotonic()
     ok, errors, normalized = validate_sql(sql)
     if not ok:
-        log.warning("sql denied: %s | %s", sql[:200], errors)
+        event("sql.denied", sql=sql[:300], errors=errors, level=logging.WARNING)
         return {"ok": False, "error": "; ".join(errors), "sql": sql[:500],
                 "columns": [], "rows": [], "row_count": 0, "truncated": False}
     conn = None
@@ -59,13 +60,14 @@ def execute_sql(sql: str) -> dict:
         truncated = len(raw) > MAX_SQL_ROWS
         rows = [dict(r) for r in raw[:MAX_SQL_ROWS]]
         elapsed = round(time.monotonic() - t0, 2)
-        log.info("sql ok rows=%d truncated=%s %.2fs | %s",
-                 len(rows), truncated, elapsed, normalized[:200])
+        event("sql.done", rows=len(rows), truncated=truncated,
+              elapsed_s=elapsed, sql=normalized[:300])
         return {"ok": True, "error": "", "sql": normalized,
                 "columns": columns, "rows": rows,
                 "row_count": len(rows), "truncated": truncated}
     except Exception as e:
-        log.warning("sql exec failed: %s | %s", normalized[:200], e)
+        event("sql.done", ok=False, error=str(e)[:300], sql=normalized[:300],
+              level=logging.WARNING)
         return {"ok": False, "error": f"Execution failed: {e}",
                 "sql": normalized, "columns": [], "rows": [],
                 "row_count": 0, "truncated": False}

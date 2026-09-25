@@ -12,6 +12,7 @@ module never loads the ML model. Caps keep chat requests production-safe.
 from datetime import date, timedelta
 
 from . import district_map
+from .log import event
 from .schema import schema_prompt as _schema_prompt  # noqa: F401 (re-export for agent)
 from .sql_exec import execute_sql
 
@@ -163,6 +164,79 @@ def _predict_one(station_id: int, target) -> dict:
         return predict_future_streamflow(int(station_id), target)
 
 
+def _forecast_one_station(s: dict, horizon_days: int, district: str = "") -> dict:
+    """Shared per-station forecast core: past rows + trajectory + peak card."""
+    flood_db = _db()
+    sid = s["station_id"]
+    _anchor, target = _anchor_and_target(sid, horizon_days)
+    past = flood_db.query(
+        "SELECT date, raw_streamflow FROM gauge_state "
+        "WHERE station_id = ? ORDER BY date DESC LIMIT 6",
+        [sid],
+    )
+    past_rows = [
+        {"date": r["date"], "streamflow": round(float(r["raw_streamflow"]), 1), "kind": "past"}
+        for r in reversed(past)
+    ]
+    traj_out = _predict_one(sid, target)
+    traj = traj_out.get("trajectory", []) or []
+    future_rows = [
+        {"date": t["date"], "streamflow": round(float(t["pred_raw_streamflow"]), 1), "kind": "forecast"}
+        for t in traj
+    ]
+    past_peak = max([r["streamflow"] for r in past_rows] or [0.0])
+    traj_peak = max([r["streamflow"] for r in future_rows] or [0.0])
+    peak_flow = max([r["streamflow"] for r in past_rows + future_rows] or [0.0])
+    peak_date = next(
+        (r["date"] for r in (past_rows + future_rows) if r["streamflow"] == peak_flow),
+        target.isoformat(),
+    )
+    event("predict.station", station_id=sid, district=district,
+          anchor=_anchor.isoformat(), target=target.isoformat(),
+          past_n=len(past_rows), past_peak=past_peak,
+          past_peak_date=next((r["date"] for r in past_rows if r["streamflow"] == past_peak), ""),
+          traj_n=len(future_rows), traj_peak=traj_peak,
+          final_peak=peak_flow, final_peak_date=peak_date,
+          severity=severity_of(peak_flow, s))
+    return {
+        "station_id": sid,
+        "station_name": s.get("station_name", ""),
+        "location_name": s.get("location_name", ""),
+        "thresholds": thresholds_of(s),
+        "peak_flow": peak_flow,
+        "peak_date": peak_date,
+        "severity": severity_of(peak_flow, s),
+        "chart": past_rows + future_rows,
+        "anchor": _anchor.isoformat(),
+        "target": target.isoformat(),
+    }
+
+
+def predict_station(station_id: int, horizon_days: int = 7) -> dict:
+    """Forecast for ONE gauge station (model run, 1-7 day horizon).
+
+    Returns the same peak card predict_district produces per station,
+    plus district/location resolution for the gauge.
+    """
+    horizon_days = max(MIN_HORIZON_DAYS, min(int(horizon_days), MAX_HORIZON_DAYS))
+    flood_db = _db()
+    station = flood_db.get_station(int(station_id))
+    if not station:
+        raise ValueError(f"Station {station_id} not found.")
+    station = dict(station)
+    info = district_map.gauge_to_district().get(station.get("station_name", ""), {})
+    station = {**station, **info}
+    district = info.get("district", "")
+    card = _forecast_one_station(station, horizon_days, district)
+    return {
+        "district": district,
+        "location_name": info.get("location_name", ""),
+        "sub_district": info.get("sub_district", ""),
+        "horizon_days": horizon_days,
+        **card,
+    }
+
+
 def predict_district(districts: list, horizon_days: int = 7) -> dict:
     """7-day forecast per station for up to 2 districts (≤6 stations each).
 
@@ -179,7 +253,6 @@ def predict_district(districts: list, horizon_days: int = 7) -> dict:
             "per request — run one district at a time for big areas."
         )
     horizon_days = max(MIN_HORIZON_DAYS, min(int(horizon_days), MAX_HORIZON_DAYS))
-    flood_db = _db()
 
     per_district = []
     for district in districts:
@@ -190,49 +263,21 @@ def predict_district(districts: list, horizon_days: int = 7) -> dict:
                 f"Known districts include: {', '.join(district_map.all_districts()[:10])}…"
             )
         covered = stations[:MAX_STATIONS_PER_DISTRICT]
-        station_results = []
-        for s in covered:
-            sid = s["station_id"]
-            _anchor, target = _anchor_and_target(sid, horizon_days)
-            past = flood_db.query(
-                "SELECT date, raw_streamflow FROM gauge_state "
-                "WHERE station_id = ? ORDER BY date DESC LIMIT 6",
-                [sid],
-            )
-            past_rows = [
-                {"date": r["date"], "streamflow": round(float(r["raw_streamflow"]), 1), "kind": "past"}
-                for r in reversed(past)
-            ]
-            traj_out = _predict_one(sid, target)
-            traj = traj_out.get("trajectory", []) or []
-            future_rows = [
-                {"date": t["date"], "streamflow": round(float(t["pred_raw_streamflow"]), 1), "kind": "forecast"}
-                for t in traj
-            ]
-            peak_flow = max([r["streamflow"] for r in past_rows + future_rows] or [0.0])
-            peak_date = next(
-                (r["date"] for r in (past_rows + future_rows) if r["streamflow"] == peak_flow),
-                target.isoformat(),
-            )
-            station_results.append({
-                "station_id": sid,
-                "station_name": s.get("station_name", ""),
-                "location_name": s.get("location_name", ""),
-                "thresholds": thresholds_of(s),
-                "peak_flow": peak_flow,
-                "peak_date": peak_date,
-                "severity": severity_of(peak_flow, s),
-                "chart": past_rows + future_rows,
-            })
+        station_results = [_forecast_one_station(s, horizon_days, district) for s in covered]
         try:
             from Flood_prediction.briefing import summarize_district  # type: ignore
         except ImportError:
             from briefing import summarize_district  # type: ignore
+        # Briefing must peak over the SAME full window (past + forecast) as the
+        # station cards above. briefing._peak_of only scans "trajectory", so the
+        # full chart is passed as trajectory points — previously only forecast
+        # rows were passed, which contradicted the cards whenever a past actual
+        # exceeded the forecast peak (the Bijnor-212 class of failure).
         briefing_results = {
             r["station_id"]: {
                 "trajectory": [
                     {"date": p["date"], "pred_raw_streamflow": p["streamflow"]}
-                    for p in r["chart"] if p["kind"] == "forecast"
+                    for p in r["chart"]
                 ],
                 "pred_raw_streamflow": r["peak_flow"],
                 "date": r["peak_date"],
@@ -251,6 +296,8 @@ def predict_district(districts: list, horizon_days: int = 7) -> dict:
             for r in station_results
         }
         paragraph = summarize_district(district, briefing_results, briefing_meta)["paragraph"]
+        event("briefing.done", district=district,
+              stations_covered=len(covered), paragraph=paragraph[:600])
         per_district.append({
             "district": district,
             "stations_total": len(stations),
@@ -276,7 +323,8 @@ def describe_tables() -> dict:
         ],
         "notes": (
             "Join on station_id. gauge_state.date is TEXT YYYY-MM-DD. "
-            "District names are NOT in the database."
+            "Districts live in station_district.district (TEXT); "
+            "DIST_SINK is km of river distance, never a district code."
         ),
     }
 
@@ -325,6 +373,7 @@ def charts_from_rows(rows: list, columns: list) -> list:
         except (TypeError, ValueError):
             continue
     charts = []
+    district_col = next((c for c in columns if str(c).lower() == "district"), None)
     for sid, rs in grouped.items():
         station = flood_db.get_station(sid)
         if not station:
@@ -342,10 +391,16 @@ def charts_from_rows(rows: list, columns: list) -> list:
                 continue
         pts.sort(key=lambda p: p["date"])
         peak = max([p["streamflow"] for p in pts] or [0.0])
+        sql_district = ""
+        if district_col is not None:
+            for r in rs:
+                if r.get(district_col):
+                    sql_district = str(r[district_col])
+                    break
         charts.append({
             "station_id": sid,
             "station_name": station.get("station_name", ""),
-            "district": district_map.district_of_station(station),
+            "district": sql_district or district_map.district_of_station(station),
             "thresholds": thresholds_of(station),
             "chart": pts,
             "severity": severity_of(peak, station),
@@ -424,6 +479,29 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "predict_station",
+            "description": (
+                "Forecast streamflow for ONE gauge station id (model run, "
+                "1-7 day horizon). Use when the user names a station id AND "
+                "asks for forecast/predict/future/risk — NOT for past history."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "station_id": {"type": "integer", "description": "Gauge station id."},
+                    "horizon_days": {
+                        "type": "integer",
+                        "description": "Forecast horizon 1-7 days.",
+                        "default": 7,
+                    },
+                },
+                "required": ["station_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "describe_tables",
             "description": (
                 "Re-read the database schema (tables, columns, meanings). "
@@ -458,6 +536,7 @@ TOOL_SCHEMAS = [
 
 _DISPATCH = {
     "predict_district": predict_district,
+    "predict_station": predict_station,
     "station_history": station_history,
     "district_stations": district_stations,
     "describe_tables": describe_tables,
@@ -466,12 +545,59 @@ _DISPATCH = {
 
 
 def run_tool(name: str, args: dict) -> dict:
+    import logging as _logging
+    import time as _time
+
     fn = _DISPATCH.get(name)
     if fn is None:
         raise ValueError(f"Unknown tool '{name}'.")
     args = dict(args or {})
-    if name == "station_history" and "station_id" in args:
+    if name in ("station_history", "predict_station") and "station_id" in args:
         args["station_id"] = int(args["station_id"])
-    if name == "predict_district" and "horizon_days" in args:
+    if name in ("predict_district", "predict_station") and "horizon_days" in args:
         args["horizon_days"] = int(args["horizon_days"])
-    return fn(**{k: v for k, v in args.items() if v is not None} if name != "district_stations" else {"district": args.get("district")})
+    safe_args = {k: (str(v)[:200] if k == "sql" else v) for k, v in args.items()}
+    event("tool.start", tool=name, args=safe_args)
+    t0 = _time.monotonic()
+    try:
+        out = fn(**{k: v for k, v in args.items() if v is not None} if name != "district_stations" else {"district": args.get("district")})
+    except Exception as e:
+        event("tool.done", tool=name, ok=False, latency_ms=round((_time.monotonic() - t0) * 1000),
+              error=str(e)[:300], level=_logging.WARNING)
+        raise
+    latency_ms = round((_time.monotonic() - t0) * 1000)
+    event("tool.done", tool=name, ok=not (isinstance(out, dict) and out.get("ok") is False),
+          latency_ms=latency_ms, stats=_result_stats(name, out))
+    return out
+
+
+def _result_stats(name: str, out) -> dict:
+    try:
+        if not isinstance(out, dict):
+            return {}
+        if name == "predict_district":
+            res = out.get("results", []) or []
+            return {"districts": len(res),
+                    "stations": sum(len(d.get("stations", [])) for d in res),
+                    "peaks": [(s["station_id"], s.get("peak_flow"), s.get("peak_date"))
+                              for d in res for s in d.get("stations", [])][:8]}
+        if name == "station_history":
+            hist = out.get("history", []) or []
+            return {"rows": len(hist),
+                    "range": [hist[0]["date"], hist[-1]["date"]] if hist else []}
+        if name == "predict_station":
+            return {"station_id": out.get("station_id"),
+                    "peak": out.get("peak_flow"), "peak_date": out.get("peak_date"),
+                    "severity": out.get("severity", ""),
+                    "chart_points": len(out.get("chart", []) or [])}
+        if name == "district_stations":
+            return {"count": out.get("count", 0)}
+        if name == "run_sql":
+            return {"ok": out.get("ok"), "row_count": out.get("row_count", 0),
+                    "truncated": out.get("truncated", False),
+                    "error": str(out.get("error", ""))[:200]}
+        if name == "describe_tables":
+            return {"tables": len(out.get("tables", []))}
+    except Exception:
+        pass
+    return {}

@@ -99,6 +99,51 @@ def seed():
     )
     print(f"   ✅ Inserted {len(station_rows)} stations into station_static.")
 
+    # ── 3b. Populate station_district (fresh-DB path; migration 003 covers existing DBs)
+    print("💾 Seeding station_district...")
+    try:
+        execute(
+            """CREATE TABLE IF NOT EXISTS station_district(
+              station_id INTEGER PRIMARY KEY,
+              district TEXT NOT NULL DEFAULT '',
+              location_name TEXT NOT NULL DEFAULT '',
+              sub_district TEXT NOT NULL DEFAULT '',
+              FOREIGN KEY (station_id) REFERENCES station_static(station_id))"""
+        )
+        _enriched = None
+        for _cand in (
+            os.path.join(os.path.dirname(DEPLOY_DIR), "..", "..", "gauge_locations_enriched.json"),
+            os.path.join(os.path.dirname(DEPLOY_DIR), "..", "..", "src", "data", "gauge_locations_enriched.json"),
+        ):
+            if os.path.exists(_cand):
+                _enriched = _cand
+                break
+        _drows, _filled = [], 0
+        _mapping = {}
+        if _enriched:
+            import json as _json2
+
+            with open(_enriched, encoding="utf-8") as _f:
+                _mapping = {r.get("gauge_id"): r for r in _json2.load(_f) if r.get("gauge_id")}
+        for _, row in gauges.iterrows():
+            _info = _mapping.get(row["station_name"], {})
+            _drows.append((
+                int(row["station_id"]),
+                str(_info.get("district", "") or ""),
+                str(_info.get("location_name", "") or ""),
+                str(_info.get("sub_district", "") or ""),
+            ))
+            if _info.get("district"):
+                _filled += 1
+        executemany(
+            "INSERT OR REPLACE INTO station_district "
+            "(station_id, district, location_name, sub_district) VALUES (?,?,?,?)",
+            _drows
+        )
+        print(f"   ✅ Inserted {len(_drows)} district rows ({_filled} with district).")
+    except Exception as e:
+        print(f"   ⚠️  station_district seed skipped: {e}")
+
     # ── 4. Seed gauge_state: Sept floor first (never July when avoidable) ──
     # Prefers committed deploy/baseflow/sync_streamflow_2026-09-22.json (367 stable IDs);
     # falls back to discharge_1007.csv BOOTSTRAP_DATE only if the floor file is missing.

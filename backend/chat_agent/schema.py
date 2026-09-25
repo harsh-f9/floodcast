@@ -72,6 +72,19 @@ CATALOG = {
             "percentile_values": "text JSON array",
         },
     },
+    "station_district": {
+        "description": (
+            "One row per station: district assignment backfilled from "
+            "gauge_locations_enriched.json. district/location_name/sub_district "
+            "are TEXT names. Join to all other tables on station_id."
+        ),
+        "columns": {
+            "station_id": "integer, joins station_static.station_id",
+            "district": "text, UP district name e.g. Agra — THE ONLY district field; filter with WHERE district = 'Agra'",
+            "location_name": "text e.g. North Central Railway",
+            "sub_district": "text e.g. Bah tehsil",
+        },
+    },
 }
 
 ALLOWED_TABLES = frozenset(CATALOG.keys())
@@ -87,6 +100,12 @@ def schema_prompt() -> str:
         lines.append("  columns: " + ", ".join(sorted(meta["columns"].keys())))
     lines.append(
         "Join stations to flows/rain with station_id. "
-        "District names are NOT in the database — never filter on a district column."
+        "Scope district questions with JOIN station_district d ON d.station_id = ... "
+        "WHERE d.district = '<name>'. "
+        "DIST_SINK is river-network distance to sink in KM (e.g. 1937.2) — it is NEVER "
+        "a district code and NEVER a station id; never filter or group by it for "
+        "district questions. There is no numeric district code anywhere. "
+        "station_static.station_id (int, e.g. 92) maps to station_static.station_name "
+        "(gauge-id text, e.g. hybas_4120864240) — resolve via SELECT, never guess."
     )
     return "\n".join(lines)
