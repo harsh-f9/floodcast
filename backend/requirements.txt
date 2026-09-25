@@ -2,7 +2,10 @@ fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 pydantic>=2.0.0
 httpx>=0.24.0
-torch>=2.2.0
+# NOTE: torch is pinned to the 2.2 CPU wheel (small RSS). Newer torch (2.14+)
+# OOM-kills the worker on Render's 512MB free tier at first inference.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
 xgboost>=2.1.0
 scikit-learn>=1.4.0
 numpy>=1.26.0
