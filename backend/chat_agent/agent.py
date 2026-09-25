@@ -185,10 +185,11 @@ def parse_intent(text: str) -> dict:
     wants_info = bool(re.search(r"list|stations|gauges|which|where|threshold|show.*gauge", lower))
     wants_top = bool(_TOP_RE.search(text or "") and re.search(r"flow|stream|flood|station|gauge", lower))
     wants_rp = bool(_RP_RE.search(text or ""))
-    wants_sweep = bool(re.search(
-        r"all stations|every station|state-?wide|entire (uttar pradesh|up|state)|"
-        r"across (uttar pradesh|up|the state)|\bsweep\b|backfill", lower)) \
-        and (wants_predict or wants_top)
+    wants_sweep = bool(re.search(r"\bsweep\b|backfill", lower)) or (
+        bool(re.search(
+            r"all stations|every station|state-?wide|entire (uttar pradesh|up|state)|"
+            r"across (uttar pradesh|up|the state)", lower))
+        and (wants_predict or wants_top))
     if wants_sweep:
         return {"kind": "sweep", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 3), "top_n": 5}

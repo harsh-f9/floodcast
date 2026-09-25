@@ -82,6 +82,10 @@ class TestIntentParse(unittest.TestCase):
         i = agent.parse_intent("top 5 stations state-wide by streamflow")
         self.assertEqual(i["kind"], "sweep")
 
+    def test_sweep_keyword_alone(self):
+        i = agent.parse_intent("Sweep Bijnor stations")
+        self.assertEqual(i["kind"], "sweep")
+
     def test_none(self):
         i = agent.parse_intent("flood")
         self.assertEqual(i["kind"], "none")

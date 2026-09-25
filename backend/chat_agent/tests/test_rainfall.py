@@ -99,21 +99,39 @@ class TestDistrictRainfall(unittest.TestCase):
             tools.district_rainfall("Atlantis")
 
     def test_e2e_no_key(self):
-        fake_backfill = {"district": "Lucknow", "stations": 7, "window": {}, "inserted": 0}
+        # Freshness-independent: fake a stale read so the backfill path runs
+        # regardless of what live data exists in the dev DB.
+        card = {"station_id": -1, "station_name": "", "district": "Lucknow",
+                "label": "Lucknow district daily avg rainfall", "unit": "mm",
+                "thresholds": {}, "chart": [{"date": "2026-09-26", "streamflow": 5.0, "kind": "past"}],
+                "severity": "", "peak_flow": 5.0, "peak_date": "2026-09-26"}
+        stale = {"district": "Lucknow", "unit": "mm", "anchor": "2026-07-14",
+                 "today_ist": "2026-09-26", "stale_days": 74, "days_requested": 3,
+                 "days_returned": 3, "stations_total": 7, "daily": [], "chart": card}
+        fresh = dict(stale, stale_days=0, anchor="2026-09-26")
+        calls = []
+
+        def fake_district(**k):
+            calls.append("read")
+            return fresh if len(calls) >= 2 else stale
+
+        def fake_backfill(**k):
+            calls.append("backfill")
+            return {"district": "Lucknow", "stations": 7, "window": {}, "inserted": 21}
+
         with patch.object(agent, "llm_configured", return_value=False), \
-             patch.dict(tools._DISPATCH, {"ensure_rainfall": lambda **k: fake_backfill}):
+             patch.dict(tools._DISPATCH, {"district_rainfall": fake_district,
+                                          "ensure_rainfall": fake_backfill}):
             out = agent.run_agent([{
                 "role": "user",
                 "content": "rainfall history of Lucknow district over past few days",
             }])
         self.assertFalse(out["llm_used"])
-        self.assertTrue(any(t["tool"] == "district_rainfall" and t["ok"]
-                            for t in out["tool_trace"]))
+        self.assertEqual(calls, ["read", "backfill", "read"])
         self.assertTrue(any(t["tool"] == "ensure_rainfall" and t["ok"]
                             for t in out["tool_trace"]))
         self.assertEqual(len(out["charts"]), 1)
         self.assertIn("Lucknow", out["charts"][0]["label"])
-        self.assertLessEqual(len(out["charts"][0]["chart"]), 3)
 
     def test_stale_triggers_backfill_then_reread(self):
         calls = []

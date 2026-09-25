@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Check, Download, Loader2, Send, X, Wrench } from "lucide-react";
+import { Bot, Check, Download, Loader2, Plus, Send, X, Wrench } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
   ResponsiveContainer,
@@ -51,7 +51,14 @@ interface Msg {
   progress?: { done: number; total: number; note: string };
 }
 
-const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
+const SUGGESTED = [
+  "Predict Bijnor",
+  "Forecast for station 92",
+  "Top 5 stations by streamflow",
+  "Highest RP station",
+  "Rainfall history of Lucknow",
+  "Sweep Bijnor stations",
+];
 
 // Black-and-white severity scale: light (calm) -> black (extreme).
 const SEV_STYLE: Record<string, string> = {
@@ -189,8 +196,14 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
-  const [model, setModel] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const newChat = () => {
+    // Backend is stateless (history travels with each request), so clearing
+    // the UI thread also clears everything the model sees.
+    setMsgs([]);
+    setInput("");
+  };
 
   useEffect(() => {
     fetch(getApiUrl("/api/chat/status"))
@@ -198,7 +211,6 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       .then((s) => {
         if (!s) return;
         setEnabled(!!s.enabled);
-        setModel(s.model || "");
       })
       .catch(() => {});
   }, []);
@@ -337,21 +349,21 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   return (
     <div className={embedded ? "flex flex-col h-full w-full bg-white" : "flex flex-col h-full w-full bg-white"}>
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-200 bg-black">
-        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-          <Bot className="w-4 h-4 text-black" />
+      <div className="relative flex items-center justify-center gap-2.5 px-4 py-4 border-b border-gray-200 bg-black">
+        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0">
+          <Bot className="w-5 h-5 text-black" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white leading-tight">Flood Assistant</p>
-          <p className="text-[11px] text-gray-400 truncate">
-            predictions + history only{model ? ` · ${model}` : ""}
-          </p>
-        </div>
-        {onClose && (
-          <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
-            <X className="w-4 h-4" />
+        <p className="text-xl font-bold text-white leading-tight tracking-tight">Flood Assistant</p>
+        <div className="absolute right-3 flex items-center gap-1">
+          <button onClick={newChat} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="New chat">
+            <Plus className="w-4 h-4" />
           </button>
-        )}
+          {onClose && (
+            <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -359,14 +371,14 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
         {msgs.length === 0 && (
           <div className="text-center mt-6">
             <Bot className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-700 mb-1">Ask for district forecasts or station history.</p>
+            <p className="text-sm text-gray-700 mb-1">Ask for forecasts, history, or analytics.</p>
             <p className="text-xs text-gray-400 mb-4">I can't answer anything else.</p>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {QUICK.map((q) => (
+            <div className="grid grid-cols-3 gap-2">
+              {SUGGESTED.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="aspect-square rounded-2xl border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-black transition-colors text-[11px] font-semibold leading-tight p-2 flex items-center justify-center"
                 >
                   {q}
                 </button>
