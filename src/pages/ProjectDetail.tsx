@@ -7,7 +7,7 @@ import { getApiUrl } from "@/lib/api";
 // Match slugs to a nice title and icon
 const MODEL_DETAILS: Record<string, { title: string, icon: JSX.Element }> = {
   "heatwave-analysis": { title: "Heatwave Prediction", icon: <ThermometerSun className="w-8 h-8 text-orange-500" /> },
-  "flood-risk": { title: "Flood Risk Prediction", icon: <Waves className="w-8 h-8 text-blue-500" /> },
+  "flood-risk": { title: "Floodcast", icon: <Waves className="w-8 h-8 text-blue-500" /> },
   "precipitation-modeling": { title: "Rainfall Prediction", icon: <CloudRain className="w-8 h-8 text-indigo-500" /> },
   "watershed-management": { title: "Lightning Prediction", icon: <Zap className="w-8 h-8 text-yellow-500" /> },
   "coldwave-impact": { title: "Coldwave Prediction", icon: <Snowflake className="w-8 h-8 text-cyan-500" /> },

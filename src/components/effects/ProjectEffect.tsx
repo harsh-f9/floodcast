@@ -1,15 +1,16 @@
 import { motion } from 'framer-motion';
 
 interface ProjectEffectProps {
-    type: 'heatwave' | 'flood' | 'rainfall' | 'lightning' | 'coldwave';
+    type: 'heatwave' | 'flood' | 'rainfall' | 'lightning' | 'coldwave' | 'snakebite';
 }
 
 const effectData: Record<string, { src: string; isHtml: boolean }> = {
     heatwave: { src: '/heatwave.svg', isHtml: false },
     flood: { src: '/rainfall.svg', isHtml: false },
-    rainfall: { src: '/rainfall.svg', isHtml: false },
+    rainfall: { src: '/rainfall-new.svg', isHtml: false },
     lightning: { src: '/lightning.svg', isHtml: false },
     coldwave: { src: '/coldwavesvg.svg', isHtml: false },
+    snakebite: { src: '/snakebite.svg', isHtml: false },
 };
 
 export const ProjectEffect = ({ type }: ProjectEffectProps) => {
