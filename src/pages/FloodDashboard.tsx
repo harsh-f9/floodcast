@@ -10,6 +10,7 @@ import "@/styles/heatwave.css"; // Reuse styling variables
 import returnPeriodsData from "../data/gauge_return_periods.json";
 import enrichedGauges from "../data/gauge_locations_enriched.json";
 import { getApiUrl } from "@/lib/api";
+import { summarizeDistrict } from "@/lib/briefing";
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -239,20 +240,29 @@ export default function FloodDashboard() {
     
     try {
       const total = districtGauges.length;
-      const baseDate = new Date("2026-07-14");
-      
+
       for (let i = 0; i < total; i++) {
         const station = districtGauges[i];
-        
-        // 1. Fetch station details for past 6 days observations
+
+        // 1. Fetch station details for past observations (also gives the anchor date)
         const resDetail = await fetch(getApiUrl(`/station/${station.station_id}`));
         if (!resDetail.ok) {
           throw new Error(`Failed to load details for station ${station.station_name}`);
         }
         const detailData = await resDetail.json();
-        
+
+        // Anchor = latest available actual (manual-Copernicus constrained); target = anchor + 7d.
+        const recentDates = ((detailData.recent_predictions || []) as any[])
+          .map((r: any) => r.date)
+          .sort();
+        const anchorStr = recentDates.length
+          ? recentDates[recentDates.length - 1]
+          : format(new Date(), "yyyy-MM-dd");
+        const anchorDate = new Date(anchorStr + "T00:00:00");
+        const targetStr = format(addDays(anchorDate, 7), "yyyy-MM-dd");
+
         // 1.5 Fetch client rainfall from Open-Meteo
-        const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, "2026-07-21");
+        const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, targetStr);
 
         // 2. Fetch future 7-day trajectory prediction
         const response = await fetch(getApiUrl("/predict"), {
@@ -262,21 +272,21 @@ export default function FloodDashboard() {
           },
           body: JSON.stringify({
             station_id: station.station_id,
-            date: "2026-07-21",
+            date: targetStr,
             client_rainfall_data: clientRainfall
           })
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to predict for station ${station.station_name}`);
         }
-        
+
         const data = await response.json();
-        
+
         // 3. Pre-compute the 14-day chartData once and cache it in the object
         const chartList = [];
         for (let j = -6; j <= 7; j++) {
-          const d = addDays(baseDate, j);
+          const d = addDays(anchorDate, j);
           const dateStr = format(d, "yyyy-MM-dd");
           
           const dbRow = detailData.recent_predictions?.find((r: any) => r.date === dateStr);
@@ -329,21 +339,30 @@ export default function FloodDashboard() {
     
     try {
       const total = stations.length;
-      const baseDate = new Date("2026-07-14");
       const chunkSize = 8;
-      
+
       for (let i = 0; i < total; i += chunkSize) {
         const chunk = stations.slice(i, i + chunkSize);
-        
+
         await Promise.all(chunk.map(async (station) => {
           try {
-            // 1. Fetch station details for past 6 days observations
+            // 1. Fetch station details for past observations (also gives the anchor date)
             const resDetail = await fetch(getApiUrl(`/station/${station.station_id}`));
             if (!resDetail.ok) throw new Error("Fetch detail failed");
             const detailData = await resDetail.json();
-            
+
+            // Anchor = latest available actual; target = anchor + 7d.
+            const recentDates = ((detailData.recent_predictions || []) as any[])
+              .map((r: any) => r.date)
+              .sort();
+            const anchorStr = recentDates.length
+              ? recentDates[recentDates.length - 1]
+              : format(new Date(), "yyyy-MM-dd");
+            const anchorDate = new Date(anchorStr + "T00:00:00");
+            const targetStr = format(addDays(anchorDate, 7), "yyyy-MM-dd");
+
             // 1.5 Fetch client rainfall from Open-Meteo
-            const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, "2026-07-21");
+            const clientRainfall = await fetchRainfallFromOpenMeteo(station.latitude, station.longitude, targetStr);
 
             // 2. Fetch future 7-day trajectory prediction
             const response = await fetch(getApiUrl("/predict"), {
@@ -353,7 +372,7 @@ export default function FloodDashboard() {
               },
               body: JSON.stringify({
                 station_id: station.station_id,
-                date: "2026-07-21",
+                date: targetStr,
                 client_rainfall_data: clientRainfall
               })
             });
@@ -364,7 +383,7 @@ export default function FloodDashboard() {
             // 3. Pre-compute chart data
             const chartList = [];
             for (let j = -6; j <= 7; j++) {
-              const d = addDays(baseDate, j);
+              const d = addDays(anchorDate, j);
               const dateStr = format(d, "yyyy-MM-dd");
               
               const dbRow = detailData.recent_predictions?.find((r: any) => r.date === dateStr);
@@ -410,16 +429,20 @@ export default function FloodDashboard() {
     }
   };
 
-  // Generate 14-day chart data around the system baseline date (July 14, 2026)
+  // Generate 14-day chart data around the latest available actual (anchor-aware)
   const chartData = useMemo(() => {
     if (!stationDetail) return [];
-    
+
     // If we have pre-computed chartData in Master Predict, reuse it directly!
     const cached = masterPredictData?.[stationDetail.station_id]?.chartData;
     if (cached) return cached;
-    
-    // Anchor strictly to the system today baseline: July 14, 2026
-    const baseDate = new Date("2026-07-14");
+
+    // Anchor = latest recent prediction date; fallback today (manual-Copernicus constrained).
+    const recentDates = (stationDetail.recent_predictions || []).map((r: any) => r.date).sort();
+    const anchorStr = recentDates.length
+      ? recentDates[recentDates.length - 1]
+      : format(new Date(), "yyyy-MM-dd");
+    const baseDate = new Date(anchorStr + "T00:00:00");
 
     const list = [];
     for (let i = -6; i <= 7; i++) {
@@ -859,10 +882,17 @@ export default function FloodDashboard() {
                   <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
                     <button
                       type="button"
-                      onClick={() => setTargetDate("2026-07-16")}
+                      onClick={() => {
+                        const ds = (stationDetail?.recent_predictions || [])
+                          .map((r: any) => r.date)
+                          .sort();
+                        setTargetDate(
+                          ds.length ? ds[ds.length - 1] : format(new Date(), "yyyy-MM-dd")
+                        );
+                      }}
                       className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-medium text-[11px] transition-colors whitespace-nowrap border border-indigo-100"
                     >
-                      July 16 (Last Actual)
+                      Last Actual (anchor)
                     </button>
                     <button
                       type="button"
@@ -1446,7 +1476,18 @@ export default function FloodDashboard() {
                     District Forecast Report: {selectedDistrict}
                   </h3>
                   <p className="text-xs text-sky-200 mt-1">
-                    Peak streamflow severities for next 7 days (July 15 - July 21, 2026)
+                    {(() => {
+                      const dates: string[] = [];
+                      Object.values(masterPredictData).forEach((v: any) => {
+                        (v?.trajectory ?? []).forEach((t: any) => {
+                          if (t?.date) dates.push(t.date);
+                        });
+                        if ((v as any)?.date) dates.push((v as any).date);
+                      });
+                      if (!dates.length) return "Peak streamflow severities for next 7 days";
+                      dates.sort();
+                      return `Peak streamflow severities (${dates[0]} to ${dates[dates.length - 1]}, anchor-limited)`;
+                    })()}
                   </p>
                 </div>
                 <button
@@ -1523,6 +1564,61 @@ export default function FloodDashboard() {
                         <span className="text-[10px] font-bold text-rose-700 uppercase">Extreme</span>
                         <p className="text-2xl font-black text-rose-900 mt-1">{counts.EXTREME}</p>
                       </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Auto briefing (one paragraph per district from data already returned) */}
+                {(() => {
+                  const meta: Record<number, any> = {};
+                  Object.entries(masterPredictData).forEach(([idStr]) => {
+                    const id = Number(idStr);
+                    const st = stations.find(s => s.station_id === id);
+                    if (!st) return;
+                    const tp = (returnPeriodsData as Record<string, any>)[st.station_name] || {};
+                    meta[id] = {
+                      station_name: st.station_name,
+                      rp_2: tp.watch ?? st.rp_2 ?? 0,
+                      rp_5: tp.warning ?? st.rp_5 ?? 0,
+                      rp_15: tp.danger ?? st.rp_15 ?? 0,
+                      rp_20: tp.extreme ?? st.rp_20 ?? 0,
+                    };
+                  });
+                  const brief = summarizeDistrict(selectedDistrict || "District", masterPredictData, meta);
+                  const copyBrief = () => {
+                    if (navigator.clipboard?.writeText) {
+                      navigator.clipboard.writeText(brief.paragraph).catch(() => {});
+                    }
+                  };
+                  const downloadBrief = () => {
+                    const blob = new Blob([brief.paragraph], { type: "text/plain" });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute("download", `Briefing_${selectedDistrict}.txt`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  };
+                  return (
+                    <div className="p-4 border border-sky-100 bg-sky-50/60 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold text-[#0a3d62]">Auto Briefing</h4>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={copyBrief}
+                            className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-sky-200 text-[#0a3d62] hover:bg-sky-100 transition-all"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            onClick={downloadBrief}
+                            className="px-3 py-1 rounded-lg text-xs font-bold bg-[#0a3d62] text-white hover:bg-[#12588c] transition-all"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-800 leading-relaxed">{brief.paragraph}</p>
                     </div>
                   );
                 })()}
