@@ -27,10 +27,14 @@ URL you set.
 
 ### If interviewers are remote (not in the room)
 - Easiest: **share your screen** and drive the dashboard yourself.
-- If they must click it themselves: expose the laptop with Cloudflare Tunnel
-  (`cloudflared tunnel --url http://localhost:8000` → you get a public https URL),
-  then set Vercel env `VITE_API_URL` to that URL and redeploy the frontend
-  (Vercel → Settings → Environment Variables → Redeploy). Test before the call.
+- If they must click it themselves, expose the laptop (verified working):
+  ```bat
+  cloudflared tunnel --url http://localhost:8000
+  ```
+  Copy the `https://<random>.trycloudflare.com` URL it prints, set Vercel env
+  `VITE_API_URL` to it, redeploy frontend in Vercel dashboard, then open the site
+  and run one prediction to confirm. Caveats: the URL changes every tunnel restart
+  (redo the Vercel step), and keep both the backend window AND the tunnel window open.
 
 ## What happens when the backend starts
 1. Tables + migrations ensured (safe to re-run).
