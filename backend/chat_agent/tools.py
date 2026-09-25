@@ -9,12 +9,21 @@ Each tool mirrors an existing API route but runs in-process (no HTTP self-call):
 Heavy imports (prediction_service -> torch) are lazy so that importing this
 module never loads the ML model. Caps keep chat requests production-safe.
 """
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 
 from . import district_map
 from .log import event
 from .schema import schema_prompt as _schema_prompt  # noqa: F401 (re-export for agent)
 from .sql_exec import execute_sql
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def today_ist() -> date:
+    """Current date in Asia/Kolkata (fixed +5:30 offset, no tz database needed)."""
+    from datetime import datetime
+
+    return datetime.now(IST).date()
 
 MAX_DISTRICTS_PER_PREDICT = 2
 MAX_STATIONS_PER_DISTRICT = 6
@@ -309,6 +318,75 @@ def predict_district(districts: list, horizon_days: int = 7) -> dict:
     return {"horizon_days": horizon_days, "results": per_district}
 
 
+# ── Tool: district_rainfall (district aggregate, read-only) ───────────────
+
+def district_rainfall(district: str, days: int = 7) -> dict:
+    """Daily average rainfall across a district's stations (latest available window).
+
+    Anchored at the latest date present in the district's rainfall records;
+    stale_days = days between today (IST) and that anchor. Chart card carries
+    unit "mm" and a label; station_id is -1 (aggregate, not a gauge).
+    """
+    from . import flags as _flags
+
+    if not _flags.district_rainfall():
+        raise ValueError("district_rainfall is disabled by feature flag.")
+    days = max(1, min(int(days), MAX_HISTORY_DAYS))
+    stations = district_map.stations_for_district(district)
+    if not stations:
+        raise ValueError(
+            f"Unknown district '{district}'. "
+            f"Known districts include: {', '.join(district_map.all_districts()[:10])}…")
+    flood_db = _db()
+    ids = [s["station_id"] for s in stations]
+    placeholders = ",".join("?" * len(ids))
+    anchor_row = flood_db.query_one(
+        f"SELECT MAX(date) AS m FROM station_rainfall_history WHERE station_id IN ({placeholders})",
+        ids,
+    )
+    anchor = anchor_row["m"] if anchor_row and anchor_row["m"] else today_ist().isoformat()
+    start = (date.fromisoformat(anchor) - timedelta(days=days - 1)).isoformat()
+    rows = flood_db.query(
+        f"SELECT date, AVG(rainfall_mm) AS avg_rain, MAX(rainfall_mm) AS max_rain, "
+        f"COUNT(*) AS n FROM station_rainfall_history "
+        f"WHERE station_id IN ({placeholders}) AND date >= ? AND date <= ? "
+        f"GROUP BY date ORDER BY date ASC",
+        ids + [start, anchor],
+    )
+    daily = [{
+        "date": r["date"],
+        "avg_rainfall_mm": round(float(r["avg_rain"] or 0.0), 2),
+        "max_rainfall_mm": round(float(r["max_rain"] or 0.0), 2),
+        "stations_reporting": int(r["n"]),
+    } for r in rows]
+    stale_days = (today_ist() - date.fromisoformat(anchor)).days
+    peak = max([d["avg_rainfall_mm"] for d in daily] or [0.0])
+    return {
+        "district": district,
+        "unit": "mm",
+        "anchor": anchor,
+        "today_ist": today_ist().isoformat(),
+        "stale_days": stale_days,
+        "days_requested": days,
+        "days_returned": len(daily),
+        "stations_total": len(ids),
+        "daily": daily,
+        "chart": {
+            "station_id": -1,
+            "station_name": "",
+            "district": district,
+            "label": f"{district} district daily avg rainfall",
+            "unit": "mm",
+            "thresholds": {"watch": 0, "warning": 0, "danger": 0, "extreme": 0},
+            "chart": [{"date": d["date"], "streamflow": d["avg_rainfall_mm"], "kind": "past"}
+                      for d in daily],
+            "severity": "",
+            "peak_flow": peak,
+            "peak_date": next((d["date"] for d in daily if d["avg_rainfall_mm"] == peak), ""),
+        },
+    }
+
+
 # ── OpenAI-compatible schemas (native tool calling) + dispatcher ──────────
 
 def describe_tables() -> dict:
@@ -401,6 +479,8 @@ def charts_from_rows(rows: list, columns: list) -> list:
             "station_id": sid,
             "station_name": station.get("station_name", ""),
             "district": sql_district or district_map.district_of_station(station),
+            "label": "",
+            "unit": "m³/s",
             "thresholds": thresholds_of(station),
             "chart": pts,
             "severity": severity_of(peak, station),
@@ -624,6 +704,25 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "district_rainfall",
+            "description": (
+                "Daily average rainfall across a district's gauge stations "
+                "(latest available window, up to 7 days). Use for 'rainfall "
+                "history/rain over past days in <district>' questions."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "district": {"type": "string", "description": "District name."},
+                    "days": {"type": "integer", "description": "Days 1-7.", "default": 7},
+                },
+                "required": ["district"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "describe_tables",
             "description": (
                 "Re-read the database schema (tables, columns, meanings). "
@@ -661,6 +760,7 @@ _DISPATCH = {
     "predict_station": predict_station,
     "sweep_stations": sweep_stations,
     "station_history": station_history,
+    "district_rainfall": district_rainfall,
     "district_stations": district_stations,
     "describe_tables": describe_tables,
     "run_sql": run_sql,
@@ -671,9 +771,13 @@ def run_tool(name: str, args: dict) -> dict:
     import logging as _logging
     import time as _time
 
+    from . import flags as _flags
+
     fn = _DISPATCH.get(name)
     if fn is None:
         raise ValueError(f"Unknown tool '{name}'.")
+    if not _flags.tool_enabled(name):
+        raise ValueError(f"Tool '{name}' is disabled by feature flag.")
     args = dict(args or {})
     if name in ("station_history", "predict_station") and "station_id" in args:
         args["station_id"] = int(args["station_id"])
@@ -720,6 +824,10 @@ def _result_stats(name: str, out) -> dict:
         if name == "sweep_stations":
             return {"swept": out.get("swept", 0), "failed_n": len(out.get("failed", [])),
                     "top_n": len(out.get("top", []))}
+        if name == "district_rainfall":
+            return {"district": out.get("district"), "anchor": out.get("anchor"),
+                    "stale_days": out.get("stale_days", 0),
+                    "days_returned": out.get("days_returned", 0)}
         if name == "district_stations":
             return {"count": out.get("count", 0)}
         if name == "run_sql":

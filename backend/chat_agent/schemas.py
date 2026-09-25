@@ -17,6 +17,8 @@ class ChartPayload(BaseModel):
     station_id: int
     station_name: str = ""
     district: str = ""
+    label: str = ""
+    unit: str = "m³/s"
     thresholds: dict = {}
     chart: list[dict] = []
     severity: str = ""

@@ -63,10 +63,34 @@ Rules:
   THEN run_sql again to rank the backfilled rows and station_history for the
   winners' graphs. Never declare data missing until you have swept; never
   invent flows.
+- For district rainfall questions use district_rainfall (daily averages across
+  the district's gauges). Rainfall history is OBSERVED data, not a forecast.
+- "Past N days" counts back from the latest AVAILABLE date in the database,
+  not from today. Always compare that anchor to today and state plainly how
+  stale the data is (e.g. "latest available 2026-09-22, 4 days ago").
 
 {schema}"""
 
-SYSTEM_PROMPT = SYSTEM_PROMPT.replace("{schema}", schema_prompt())
+SYSTEM_PROMPT_TEMPLATE = SYSTEM_PROMPT
+
+
+def build_system_prompt() -> str:
+    """Per-request prompt: frozen template + schema + today's date (IST).
+
+    The date line is gated by the CHAT_DATE_IN_PROMPT flag; without it the
+    model has no clock and mis-anchors "past few days".
+    """
+    from . import flags as _flags
+    from .tools import today_ist
+
+    prompt = SYSTEM_PROMPT_TEMPLATE.replace("{schema}", schema_prompt())
+    if _flags.date_in_prompt():
+        prompt += (
+            f"\nToday is {today_ist().isoformat()} (Asia/Kolkata). "
+            "Every tool result carries its own anchor date — use it, and always "
+            "tell the user when data ends before today."
+        )
+    return prompt
 
 
 def model_name() -> str:
@@ -140,6 +164,8 @@ def _parse_days(text: str, default: int) -> int:
             return max(1, min(int(m.group(1)), 7))
         except ValueError:
             pass
+    if re.search(r"past few days|last few days", text or "", re.IGNORECASE):
+        return 3
     return default
 
 
@@ -173,6 +199,10 @@ def parse_intent(text: str) -> dict:
         # A named station + forecast verbs = single-station model run.
         return {"kind": "predict_station", "districts": districts, "station_id": station_id,
                 "days": 7, "top_n": 5}
+    if districts and not station_id and re.search(r"\brain\b|rainfall", lower):
+        # District rainfall history (observed, not a forecast).
+        return {"kind": "district_rainfall", "districts": districts, "station_id": None,
+                "days": _parse_days(text, 7), "top_n": 5}
     if wants_history and station_id is not None:
         return {"kind": "history", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 7), "top_n": 5}
@@ -197,7 +227,8 @@ def capability_reply() -> str:
     return (
         "I can show flood predictions and station history. "
         f"Try 'Predict Bijnor', 'Forecast for station 92', 'History of station 0', "
-        f"'Top 5 stations by streamflow', or 'List stations in Lucknow'. "
+        f"'Rainfall history of Lucknow district', 'Top 5 stations by streamflow', "
+        f"or 'List stations in Lucknow'. "
         f"({len(names)} districts available.)"
     )
 
@@ -425,6 +456,8 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                         "station_id": s["station_id"],
                         "station_name": s.get("station_name", ""),
                         "district": d.get("district", ""),
+                        "label": "",
+                        "unit": "m³/s",
                         "thresholds": s.get("thresholds", {}),
                         "chart": s.get("chart", []),
                         "severity": s.get("severity", ""),
@@ -436,17 +469,35 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                 "station_id": out.get("station_id", -1),
                 "station_name": out.get("station_name", ""),
                 "district": out.get("district", ""),
+                "label": "",
+                "unit": "m³/s",
                 "thresholds": out.get("thresholds", {}),
                 "chart": out.get("chart", []),
                 "severity": out.get("severity", ""),
                 "peak_flow": out.get("peak_flow"),
                 "peak_date": out.get("peak_date", ""),
             })
+        elif tool == "district_rainfall":
+            c = out.get("chart", {}) or {}
+            charts.append({
+                "station_id": c.get("station_id", -1),
+                "station_name": c.get("station_name", ""),
+                "district": c.get("district", ""),
+                "label": c.get("label", ""),
+                "unit": c.get("unit", "mm"),
+                "thresholds": c.get("thresholds", {}),
+                "chart": c.get("chart", []),
+                "severity": c.get("severity", ""),
+                "peak_flow": c.get("peak_flow"),
+                "peak_date": c.get("peak_date", ""),
+            })
         elif tool == "station_history":
             charts.append({
                 "station_id": out.get("station_id", -1),
                 "station_name": out.get("station_name", ""),
                 "district": out.get("district", ""),
+                "label": "",
+                "unit": "m³/s",
                 "thresholds": out.get("thresholds", {}),
                 "chart": out.get("chart", []),
                 "severity": (out.get("history") or [{}])[-1].get("severity", "") if out.get("history") else "",
@@ -459,14 +510,17 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
     tool_model = model_name()
 
     if llm_configured():
-        convo = [{"role": "system", "content": SYSTEM_PROMPT}]
+        from . import flags as _flags
+
+        schemas = _flags.active_schemas(TOOL_SCHEMAS)
+        convo = [{"role": "system", "content": build_system_prompt()}]
         convo += [{"role": m["role"], "content": m["content"]} for m in messages[-10:]]
         try:
             for round_no in range(MAX_TOOL_ROUNDS):
                 event("llm.request", round=round_no + 1, model=model_name(),
                       convo_n=len(convo))
                 _emit("round_start", round=round_no + 1, model=model_name())
-                data, tool_model = _post_chat(convo, TOOL_SCHEMAS, model_name(), LLM_MAX_TOKENS)
+                data, tool_model = _post_chat(convo, schemas, model_name(), LLM_MAX_TOKENS)
                 msg = data["choices"][0]["message"]
                 calls = msg.get("tool_calls") or []
                 event("llm.response", round=round_no + 1, served=tool_model,
@@ -517,6 +571,9 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
         elif intent["kind"] == "predict_station":
             _record("predict_station", {"station_id": intent["station_id"],
                                         "horizon_days": horizon_days})
+        elif intent["kind"] == "district_rainfall":
+            _record("district_rainfall", {"district": intent["districts"][0],
+                                          "days": intent["days"]})
         elif intent["kind"] == "sweep":
             scope = {"horizon_days": horizon_days}
             if intent["districts"]:

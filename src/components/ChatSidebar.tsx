@@ -22,6 +22,8 @@ interface ChartPayload {
   station_id: number;
   station_name: string;
   district: string;
+  label?: string;
+  unit?: string;
   thresholds: { watch: number; warning: number; danger: number; extreme: number };
   chart: ChartRow[];
   severity: string;
@@ -103,17 +105,19 @@ function StepRow({ s }: { s: Step }) {
 }
 
 function ChartCard({ c }: { c: ChartPayload }) {
+  const unit = c.unit || "m³/s";
   const data = (c.chart || []).map((r) => ({
     x: r.date.slice(5),
     past: r.kind === "past" ? r.streamflow : null,
     forecast: r.kind === "forecast" ? r.streamflow : null,
   }));
   const t = c.thresholds || { watch: 0, warning: 0, danger: 0, extreme: 0 };
+  const title = c.label || `Stn ${c.station_id}${c.district ? ` · ${c.district}` : ""}`;
   return (
     <div className="rounded-lg bg-white border border-gray-200 p-2.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <p className="text-xs font-semibold text-black truncate">
-          Stn {c.station_id}{c.district ? ` · ${c.district}` : ""}
+          {title}
         </p>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SEV_STYLE[c.severity] || SEV_STYLE.UNKNOWN}`}>
           {c.severity || "UNKNOWN"}
@@ -121,7 +125,7 @@ function ChartCard({ c }: { c: ChartPayload }) {
       </div>
       {c.peak_flow != null && (
         <p className="text-[11px] text-gray-600 mb-1.5">
-          Peak {c.peak_flow} m³/s on {c.peak_date}
+          Peak {c.peak_flow} {unit} on {c.peak_date}
         </p>
       )}
       <div className="h-[140px] w-full">
@@ -132,7 +136,7 @@ function ChartCard({ c }: { c: ChartPayload }) {
             <YAxis stroke="#737373" fontSize={9} tickLine={false} axisLine={false} />
             <ChartTooltip
               contentStyle={{ backgroundColor: "#fff", border: "1px solid #d4d4d4", borderRadius: 8, color: "#000", fontSize: 11 }}
-              formatter={(v: unknown) => [`${v} m³/s`, "Flow"]}
+              formatter={(v: unknown) => [`${v} ${unit}`, unit === "mm" ? "Rain" : "Flow"]}
             />
             {t.watch > 0 && <ReferenceLine y={t.watch} stroke="#a3a3a3" strokeDasharray="3 3" strokeWidth={1} />}
             {t.warning > 0 && <ReferenceLine y={t.warning} stroke="#737373" strokeDasharray="3 3" strokeWidth={1} />}
@@ -150,16 +154,17 @@ function ChartCard({ c }: { c: ChartPayload }) {
 // Same quoting pattern as the dashboard's Master Predict CSV export.
 function exportMessageCsv(m: Msg, idx: number) {
   const rows: string[][] = [
-    ["Station ID", "Station Name", "District", "Date", "Streamflow (m3/s)", "Kind", "Severity", "Peak Flow (m3/s)", "Peak Date"],
+    ["Station ID", "Station Name", "District", "Date", "Value", "Unit", "Kind", "Severity", "Peak Value", "Peak Date"],
   ];
   (m.charts || []).forEach((c) => {
     (c.chart || []).forEach((p) => {
       rows.push([
         String(c.station_id),
-        c.station_name || "",
+        c.label || c.station_name || "",
         c.district || "",
         p.date,
         p.streamflow == null ? "" : String(p.streamflow),
+        c.unit || "m³/s",
         p.kind,
         c.severity || "",
         c.peak_flow == null ? "" : String(c.peak_flow),
@@ -435,7 +440,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
             {m.charts && m.charts.length > 0 && (
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {m.charts.map((c) => (
-                  <ChartCard key={c.station_id} c={c} />
+                  <ChartCard key={`${c.station_id}-${c.label || c.district || ""}`} c={c} />
                 ))}
               </div>
             )}
