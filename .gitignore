@@ -47,3 +47,4 @@ backend/Flood_prediction/data/*.csv
 backend/.env
 *.env.local
 
+backend/Flood_prediction/deploy/baseflow/tmp/
