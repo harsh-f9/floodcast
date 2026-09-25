@@ -31,10 +31,15 @@ from .tools import (
 )
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "openai/gpt-4o-mini"  # must support tools natively; override via env
-MAX_TOOL_ROUNDS = 6  # room for SQL validation-repair cycles
-LLM_TIMEOUT_S = 30.0
-LLM_MAX_TOKENS = 800
+DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"  # tool loop; override via OPENROUTER_MODEL
+DEFAULT_SUMMARY_MODEL = "nvidia/nemotron-3.5-lightning"  # summarizer layer; override via OPENROUTER_SUMMARY_MODEL
+FALLBACK_MODEL = "nvidia/nemotron-3-super-120b-a12b"  # paid rescue; override via OPENROUTER_FALLBACK_MODEL
+MAX_TOOL_ROUNDS = 10  # generous: validation-repair cycles must never starve
+LLM_TIMEOUT_S = 120.0  # free-tier models can be slow; wait rather than fail
+LLM_MAX_TOKENS = 2000
+SUMMARY_MAX_TOKENS = 1000
+PRIMARY_ATTEMPTS = 2  # tries on the free model before paid rescue
+FALLBACK_ATTEMPTS = 2
 
 SYSTEM_PROMPT = """You are the CRO Flood Assistant, a narrow tool for Uttar Pradesh flood streamflow.
 Rules:
@@ -57,6 +62,14 @@ SYSTEM_PROMPT = SYSTEM_PROMPT.replace("{schema}", schema_prompt())
 
 def model_name() -> str:
     return os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL)
+
+
+def summary_model_name() -> str:
+    return os.environ.get("OPENROUTER_SUMMARY_MODEL", DEFAULT_SUMMARY_MODEL)
+
+
+def fallback_model_name() -> str:
+    return os.environ.get("OPENROUTER_FALLBACK_MODEL", FALLBACK_MODEL)
 
 
 def llm_configured() -> bool:
@@ -145,36 +158,98 @@ def capability_reply() -> str:
 
 # ── L2: OpenRouter tool loop ───────────────────────────────────────────────
 
-def _post_chat(messages: list, tools: list) -> dict:
+SUMMARY_SYSTEM = """You summarize flood-assistant tool results for a district officer.
+Rules:
+- Summarize ONLY the tool results given below. Never invent stations, numbers, dates, or severities.
+- Output short markdown: 2-4 bullets with the key facts (peak station/flow/date, severity counts, action).
+- Cite visuals inline as [Chart 1], [Chart 2], matching the chart list order given.
+- If results contain an error, say what failed in one line."""
+
+
+def _post_chat(messages: list, tools: list | None, model: str, max_tokens: int) -> tuple:
+    """POST with paid-model rescue. Returns (data, served_model).
+
+    The free primary is always tried first (so it serves ~all traffic);
+    only traffic/availability failures (429/5xx/timeout/transport, or a 404
+    meaning the model slug is gone) switch a layer to the paid fallback.
+    Auth/billing/malformed errors (401/402/403/400) raise immediately —
+    retrying those can never succeed.
+    """
     headers = {
         "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
         "Content-Type": "application/json",
         "X-Title": "CRO Flood Assistant",
     }
-    body = {
-        "model": model_name(),
-        "messages": messages,
-        "tools": tools,
-        "tool_choice": "auto",
-        "temperature": 0.2,
-        "max_tokens": LLM_MAX_TOKENS,
-    }
-    last_err = None
-    for attempt in range(3):
-        try:
-            r = httpx.post(OPENROUTER_URL, headers=headers, json=body, timeout=LLM_TIMEOUT_S)
-            if r.status_code in (429, 500, 502, 503):
-                last_err = f"openrouter {r.status_code}"
-                time.sleep(1 * (2 ** attempt))
-                continue
-            r.raise_for_status()
-            return r.json()
-        except httpx.HTTPStatusError as e:
-            raise RuntimeError(f"OpenRouter error: {e.response.status_code}") from e
-        except (httpx.TimeoutException, httpx.TransportError) as e:
-            last_err = str(e)
-            time.sleep(1 * (2 ** attempt))
+    rescue = fallback_model_name()
+    candidates = [(model, PRIMARY_ATTEMPTS)]
+    if rescue and rescue != model:
+        candidates.append((rescue, FALLBACK_ATTEMPTS))
+    last_err = "no attempt"
+    for cand, tries in candidates:
+        body = {
+            "model": cand,
+            "messages": messages,
+            "temperature": 0.2,
+            "max_tokens": max_tokens,
+        }
+        if tools:
+            body["tools"] = tools
+            body["tool_choice"] = "auto"
+        for attempt in range(tries):
+            try:
+                r = httpx.post(OPENROUTER_URL, headers=headers, json=body, timeout=LLM_TIMEOUT_S)
+                if r.status_code in (429, 500, 502, 503):
+                    last_err = f"openrouter {r.status_code} on {cand}"
+                    time.sleep(2 * (2 ** attempt))
+                    continue
+                if r.status_code == 404:
+                    last_err = f"openrouter 404 on {cand}"
+                    break  # slug gone — try next candidate, don't burn retries
+                r.raise_for_status()
+                if cand != model:
+                    print(f"chat fallback served by {cand} (primary: {last_err})")
+                return r.json(), cand
+            except httpx.HTTPStatusError as e:
+                raise RuntimeError(f"OpenRouter error: {e.response.status_code}") from e
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                last_err = f"{type(e).__name__} on {cand}: {e}"
+                time.sleep(2 * (2 ** attempt))
     raise RuntimeError(f"OpenRouter unreachable after retries ({last_err}).")
+
+
+def _summarize(user_text: str, reply: str, charts: list, briefings: list) -> tuple:
+    """Summarizer layer: separate model, no tools. Failover keeps raw reply."""
+    desc = []
+    for n, c in enumerate(charts[:6], 1):
+        pts = c.get("chart", []) or []
+        dates = [p["date"] for p in pts if p.get("date")]
+        desc.append(
+            f"[Chart {n}] station {c.get('station_id')} ({c.get('district', '')}), "
+            f"severity {c.get('severity', '')}, peak {c.get('peak_flow')} m3/s on "
+            f"{c.get('peak_date', '')}, {len(pts)} points"
+            + (f" ({dates[0]}..{dates[-1]})" if dates else "")
+        )
+    if len(charts) > 6:
+        desc.append(f"({len(charts) - 6} more charts omitted)")
+    context = (
+        f"User question: {user_text}\n\nTool-grounded answer:\n{reply}\n\n"
+        f"Visuals:\n" + ("\n".join(desc) if desc else "(no charts)") + "\n\n"
+        f"Briefing: {' '.join(briefings) if briefings else '(none)'}"
+    )
+    for _ in range(2):  # empty completions happen on free tiers; one retry
+        try:
+            data, served_summary_model = _post_chat(
+                [{"role": "system", "content": SUMMARY_SYSTEM},
+                 {"role": "user", "content": context}],
+                None, summary_model_name(), SUMMARY_MAX_TOKENS,
+            )
+            text = (data["choices"][0]["message"].get("content") or "").strip()
+            if text:
+                return text, True, served_summary_model
+        except Exception as e:
+            print(f"summarizer skipped: {e}")
+            break
+    return reply, False, ""
 
 
 def run_agent(messages: list, horizon_days: int = 7) -> dict:
@@ -185,14 +260,18 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     # L0: scope gate — no LLM cost for random questions.
     if not in_scope(user_text):
         return {
-            "reply": FALLBACK_REPLY, "tool_trace": [], "charts": [],
+            "reply": FALLBACK_REPLY, "raw_reply": FALLBACK_REPLY,
+            "tool_trace": [], "charts": [],
             "briefing": None, "model": model_name(), "llm_used": False,
+            "summary_used": False, "summary_model": "",
             "latency_s": 0.0,
         }
     if re.match(r"^\s*(hi|hello|hey|namaste|help)\s*[?.!]*\s*$", user_text, re.IGNORECASE):
         return {
-            "reply": capability_reply(), "tool_trace": [], "charts": [],
+            "reply": capability_reply(), "raw_reply": capability_reply(),
+            "tool_trace": [], "charts": [],
             "briefing": None, "model": model_name(), "llm_used": False,
+            "summary_used": False, "summary_model": "",
             "latency_s": 0.0,
         }
 
@@ -252,13 +331,14 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
 
     reply = ""
     llm_used = False
+    tool_model = model_name()
 
     if llm_configured():
         convo = [{"role": "system", "content": SYSTEM_PROMPT}]
         convo += [{"role": m["role"], "content": m["content"]} for m in messages[-10:]]
         try:
             for _ in range(MAX_TOOL_ROUNDS):
-                data = _post_chat(convo, TOOL_SCHEMAS)
+                data, tool_model = _post_chat(convo, TOOL_SCHEMAS, model_name(), LLM_MAX_TOKENS)
                 msg = data["choices"][0]["message"]
                 calls = msg.get("tool_calls") or []
                 if msg.get("content"):
@@ -309,13 +389,22 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     elif not reply:
         reply = _template_reply(trace, charts, briefings, _tables)
 
+    # Summarizer layer: a separate model restates the tool-grounded answer
+    # with visual citations. Failover keeps the raw tool-grounded reply.
+    raw_reply, summary_used, summary_model = reply, False, ""
+    if trace and any(t["ok"] for t in trace) and llm_configured():
+        reply, summary_used, summary_model = _summarize(user_text, reply, charts, briefings)
+
     return {
         "reply": reply,
+        "raw_reply": raw_reply,
         "tool_trace": trace,
         "charts": charts,
         "briefing": "\n".join(b for b in briefings if b) or None,
-        "model": model_name(),
+        "model": tool_model,
         "llm_used": llm_used,
+        "summary_used": summary_used,
+        "summary_model": summary_model,
         "latency_s": round(time.time() - t0, 2),
     }
 
