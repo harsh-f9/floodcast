@@ -45,6 +45,16 @@ class TestIntentParse(unittest.TestCase):
         i = agent.parse_intent("list stations in Lucknow")
         self.assertEqual(i["kind"], "info")
 
+    def test_top_flow_sql(self):
+        i = agent.parse_intent("run for all stations, top 5 highest streamflow, graphs past 3 days each")
+        self.assertEqual(i["kind"], "sql_top")
+        self.assertEqual(i["days"], 3)
+        self.assertEqual(i["top_n"], 5)
+
+    def test_max_rp_sql(self):
+        i = agent.parse_intent("which station has highest rp")
+        self.assertEqual(i["kind"], "sql_rp")
+
     def test_none(self):
         i = agent.parse_intent("flood")
         self.assertEqual(i["kind"], "none")
@@ -143,6 +153,56 @@ class TestLLMPath(unittest.TestCase):
         self.assertTrue(out["llm_used"])
         rt.assert_called_once()
         self.assertEqual(rt.call_args[0][0], "station_history")
+
+
+class TestDeterministicSQLPath(unittest.TestCase):
+    def test_top5_no_key_with_graphs(self):
+        with patch.object(agent, "llm_configured", return_value=False):
+            out = agent.run_agent([{
+                "role": "user",
+                "content": "top 5 stations with highest streamflow, show graphs past 3 days each",
+            }])
+        self.assertFalse(out["llm_used"])
+        tools_used = [t["tool"] for t in out["tool_trace"] if t["ok"]]
+        self.assertIn("run_sql", tools_used)
+        self.assertIn("station_history", tools_used)
+        self.assertGreaterEqual(len(out["charts"]), 1)
+        for c in out["charts"]:
+            self.assertLessEqual(len(c["chart"]), 3)
+
+    def test_max_rp_no_key(self):
+        with patch.object(agent, "llm_configured", return_value=False):
+            out = agent.run_agent([{"role": "user", "content": "which station has highest rp"}])
+        self.assertFalse(out["llm_used"])
+        self.assertTrue(any(t["tool"] == "run_sql" and t["ok"] for t in out["tool_trace"]))
+        self.assertIn("rp_20", out["reply"])
+
+
+class TestLLMSQLRepair(unittest.TestCase):
+    def _call(self, name, arguments):
+        return {"choices": [{"message": {
+            "content": "",
+            "tool_calls": [{"id": "c1", "function": {"name": name, "arguments": arguments}}],
+        }}]}
+
+    def test_drop_rejected_then_repaired(self):
+        from chat_agent import sql_exec
+        before = sql_exec.execute_sql("SELECT COUNT(*) AS n FROM gauge_state")
+        calls = [
+            self._call("run_sql", '{"sql": "DROP TABLE gauge_state"}'),
+            self._call("run_sql", '{"sql": "SELECT station_id, rp_20 FROM station_static ORDER BY rp_20 DESC LIMIT 2"}'),
+            {"choices": [{"message": {"content": "Top RP stations listed.", "tool_calls": []}}]},
+        ]
+        with patch.object(agent, "llm_configured", return_value=True), \
+             patch.object(agent, "_post_chat", side_effect=calls):
+            out = agent.run_agent([{"role": "user", "content": "which stations have the highest rp"}])
+        self.assertTrue(out["llm_used"])
+        denied = [t for t in out["tool_trace"] if t["tool"] == "run_sql" and not t["ok"]]
+        allowed = [t for t in out["tool_trace"] if t["tool"] == "run_sql" and t["ok"]]
+        self.assertTrue(denied and allowed, out["tool_trace"])
+        self.assertEqual(out["reply"], "Top RP stations listed.")
+        after = sql_exec.execute_sql("SELECT COUNT(*) AS n FROM gauge_state")
+        self.assertEqual(before["rows"], after["rows"])
 
 
 if __name__ == "__main__":

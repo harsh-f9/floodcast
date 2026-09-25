@@ -17,9 +17,13 @@ import time
 import httpx
 
 from . import district_map
+from .schema import schema_prompt
 from .tools import (
     FALLBACK_REPLY,
+    CANNED_MAX_RP,
+    CANNED_TOP_FLOW,
     TOOL_SCHEMAS,
+    charts_from_rows,
     district_stations,
     predict_district,
     run_tool,
@@ -28,17 +32,27 @@ from .tools import (
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-4o-mini"  # must support tools natively; override via env
-MAX_TOOL_ROUNDS = 4
+MAX_TOOL_ROUNDS = 6  # room for SQL validation-repair cycles
 LLM_TIMEOUT_S = 30.0
 LLM_MAX_TOKENS = 800
 
 SYSTEM_PROMPT = """You are the CRO Flood Assistant, a narrow tool for Uttar Pradesh flood streamflow.
 Rules:
-- You ONLY answer using the provided tools (predict_district, station_history, district_stations).
+- You ONLY answer using the provided tools (predict_district, station_history,
+  district_stations, describe_tables, run_sql).
 - Never invent streamflow numbers, dates, severities, or station ids. If a tool was not called, say you cannot answer.
-- If the user asks anything outside flood predictions / station history / gauge listings, reply exactly: I can't answer that — I can only show flood predictions and station history.
+- If the user asks anything outside flood predictions / station history / gauge listings / database analytics, reply exactly: I can't answer that — I can only show flood predictions and station history.
 - Keep replies short. Always name station ids, dates, and severity labels returned by the tools.
-- District names must match tool results; never guess spellings."""
+- District names must match tool results; never guess spellings.
+- For cross-station analytics (top-N, highest/lowest, comparisons, history ranges) write SQLite with run_sql:
+  single SELECT only, explicit columns (never *), LIMIT <= 100. If run_sql
+  returns an error, rewrite the SQL using the error message and retry.
+- For graphs of specific stations after an analytics query, call
+  station_history per station.
+
+{schema}"""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT.replace("{schema}", schema_prompt())
 
 
 def model_name() -> str:
@@ -54,7 +68,8 @@ def llm_configured() -> bool:
 _SCOPE_RE = re.compile(
     r"flood|streamflow|predict|forecast|history|station|district|gauge|"
     r"rain|risk|report|severity|warning|danger|watch|extreme|normal|flow|"
-    r"water|river|discharge|\bhi\b|hello|help|namaste",
+    r"water|river|discharge|\brp\b|threshold|top|highest|most|max|sql|graph|"
+    r"\bhi\b|hello|help|namaste",
     re.IGNORECASE,
 )
 _STATION_RE = re.compile(r"station\s+(\d+)", re.IGNORECASE)
@@ -66,26 +81,57 @@ def in_scope(text: str) -> bool:
 
 # ── L1: deterministic intent parse ─────────────────────────────────────────
 
+_DAYS_RE = re.compile(r"(?:past|last)\s+(\d+)\s+days?", re.IGNORECASE)
+_TOP_RE = re.compile(r"\btop\s+(\d+)\b|\bhighest\b|\bmost\b|\bmax(?:imum)?\b", re.IGNORECASE)
+_RP_RE = re.compile(r"\brp\b|return period|threshold", re.IGNORECASE)
+
+
+def _parse_days(text: str, default: int) -> int:
+    m = _DAYS_RE.search(text or "")
+    if m:
+        try:
+            return max(1, min(int(m.group(1)), 7))
+        except ValueError:
+            pass
+    return default
+
+
 def parse_intent(text: str) -> dict:
-    """Return {kind, districts, station_id} with kind in predict/history/info/none."""
+    """kinds: predict/history/info/sql_top/sql_rp/none (+ days, top_n)."""
     lower = (text or "").lower()
     districts = [d for d in district_map.all_districts() if d.lower() in lower]
     m = _STATION_RE.search(text or "")
     station_id = int(m.group(1)) if m else None
-    wants_history = bool(re.search(r"histor|past|previous|old|last\s+\d*\s*day|ago", lower))
+    wants_history = bool(re.search(r"histor|past|previous|old|last\s+\d*\s*day|ago|graph", lower))
     wants_predict = bool(re.search(r"predict|forecast|risk|report|future|next\s+\d*\s*day|warn|danger", lower))
     wants_info = bool(re.search(r"list|stations|gauges|which|where|threshold|show.*gauge", lower))
+    wants_top = bool(_TOP_RE.search(text or "") and re.search(r"flow|stream|flood|station|gauge", lower))
+    wants_rp = bool(_RP_RE.search(text or ""))
+    if wants_rp and wants_top:
+        return {"kind": "sql_rp", "districts": districts, "station_id": station_id,
+                "days": _parse_days(text, 3), "top_n": 5}
+    if wants_top:
+        n = re.search(r"\btop\s+(\d+)\b", lower)
+        top_n = max(1, min(int(n.group(1)) if n else 5, 10))
+        return {"kind": "sql_top", "districts": districts, "station_id": station_id,
+                "days": _parse_days(text, 3), "top_n": top_n}
     if wants_history and station_id is not None:
-        return {"kind": "history", "districts": districts, "station_id": station_id}
+        return {"kind": "history", "districts": districts, "station_id": station_id,
+                "days": _parse_days(text, 7), "top_n": 5}
     if wants_predict and districts:
-        return {"kind": "predict", "districts": districts, "station_id": station_id}
+        return {"kind": "predict", "districts": districts, "station_id": station_id,
+                "days": 7, "top_n": 5}
     if wants_info:
-        return {"kind": "info", "districts": districts, "station_id": station_id}
+        return {"kind": "info", "districts": districts, "station_id": station_id,
+                "days": 7, "top_n": 5}
     if districts:  # bare district name -> predict (most useful default)
-        return {"kind": "predict", "districts": districts, "station_id": station_id}
+        return {"kind": "predict", "districts": districts, "station_id": station_id,
+                "days": 7, "top_n": 5}
     if station_id is not None:  # bare station id -> history
-        return {"kind": "history", "districts": districts, "station_id": station_id}
-    return {"kind": "none", "districts": districts, "station_id": station_id}
+        return {"kind": "history", "districts": districts, "station_id": station_id,
+                "days": _parse_days(text, 7), "top_n": 5}
+    return {"kind": "none", "districts": districts, "station_id": station_id,
+            "days": 7, "top_n": 5}
 
 
 def capability_reply() -> str:
@@ -154,11 +200,14 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     trace: list = []
     charts: list = []
     briefings: list = []
+    _tables: list = []
 
     def _record(tool: str, args: dict):
         try:
             out = run_tool(tool, args)
-            trace.append({"tool": tool, "args": args, "ok": True, "error": ""})
+            ok = not (isinstance(out, dict) and out.get("ok") is False)
+            trace.append({"tool": tool, "args": args, "ok": ok,
+                          "error": "" if ok else str(out.get("error", ""))[:300]})
             _collect(tool, out)
             return out
         except Exception as e:
@@ -167,6 +216,13 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
 
     def _collect(tool: str, out: dict):
         if not isinstance(out, dict) or "error" in out:
+            return
+        if tool == "run_sql":
+            rows = out.get("rows", []) or []
+            _tables.append({"columns": out.get("columns", []), "rows": rows[:10]})
+            for c in charts_from_rows(rows, out.get("columns", [])):
+                if c["station_id"] not in {x["station_id"] for x in charts}:
+                    charts.append(c)
             return
         if tool == "predict_district":
             for d in out.get("results", []):
@@ -231,9 +287,19 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
         if intent["kind"] == "predict":
             _record("predict_district", {"districts": intent["districts"][:2], "horizon_days": horizon_days})
         elif intent["kind"] == "history":
-            _record("station_history", {"station_id": intent["station_id"], "days": 7})
+            _record("station_history", {"station_id": intent["station_id"], "days": intent["days"]})
         elif intent["kind"] == "info":
             _record("district_stations", {"district": (intent["districts"][:1] or [None])[0]})
+        elif intent["kind"] == "sql_top":
+            top = _record("run_sql", {"sql": CANNED_TOP_FLOW})
+            for row in (top.get("rows", []) or [])[: intent["top_n"]]:
+                try:
+                    _record("station_history",
+                            {"station_id": int(row["station_id"]), "days": intent["days"]})
+                except (TypeError, ValueError, KeyError):
+                    continue
+        elif intent["kind"] == "sql_rp":
+            _record("run_sql", {"sql": CANNED_MAX_RP})
 
     errors = [t for t in trace if not t["ok"]]
     if not trace:
@@ -241,7 +307,7 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     elif errors and len(errors) == len(trace):
         reply = f"I couldn't fetch that ({errors[0]['error']}). " + capability_reply()
     elif not reply:
-        reply = _template_reply(trace, charts, briefings)
+        reply = _template_reply(trace, charts, briefings, _tables)
 
     return {
         "reply": reply,
@@ -254,13 +320,20 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     }
 
 
-def _template_reply(trace: list, charts: list, briefings: list) -> str:
+def _template_reply(trace: list, charts: list, briefings: list, tables: list | None = None) -> str:
     parts = []
     for t in trace:
         if t["ok"]:
-            parts.append(f"• {t['tool']} {json.dumps(t['args'])} — ok")
+            parts.append(f"• {t['tool']} {json.dumps(t['args'])[:200]} — ok")
         else:
             parts.append(f"• {t['tool']} failed: {t['error']}")
+    for tab in tables or []:
+        cols = tab.get("columns", [])
+        rows = tab.get("rows", []) or []
+        if cols and rows:
+            parts.append(" | ".join(str(c) for c in cols))
+            for r in rows[:10]:
+                parts.append(" | ".join(str(r.get(c, "")) for c in cols))
     for c in charts[:6]:
         parts.append(
             f"Station {c['station_id']} ({c.get('district', '')}): "

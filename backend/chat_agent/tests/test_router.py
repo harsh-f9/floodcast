@@ -54,6 +54,17 @@ class TestChatRouter(unittest.TestCase):
         self.assertEqual(len(body["charts"]), 1)
         self.assertTrue(body["charts"][0]["chart"])
 
+    def test_top5_end_to_end_no_key(self):
+        with patch("chat_agent.agent.llm_configured", return_value=False):
+            r = self.client.post(
+                "/api/chat",
+                json={"messages": [{"role": "user", "content": "top 5 stations with highest streamflow, graphs past 3 days"}]},
+            )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertGreaterEqual(len(body["charts"]), 1)
+        self.assertTrue(all(len(c["chart"]) <= 3 for c in body["charts"]))
+
     def test_kill_switch_503(self):
         kill_switch.CHAT_ENABLED = False
         r = self.client.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})

@@ -34,7 +34,7 @@ interface Msg {
   trace?: { tool: string; args: Record<string, unknown>; ok: boolean; error: string }[];
 }
 
-const QUICK = ["Predict Bijnor", "History of station 0", "List stations in Lucknow"];
+const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
 
 const SEV_COLOR: Record<string, string> = {
   NORMAL: "bg-emerald-500/15 text-emerald-300",

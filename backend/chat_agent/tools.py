@@ -12,6 +12,8 @@ module never loads the ML model. Caps keep chat requests production-safe.
 from datetime import date, timedelta
 
 from . import district_map
+from .schema import schema_prompt as _schema_prompt  # noqa: F401 (re-export for agent)
+from .sql_exec import execute_sql
 
 MAX_DISTRICTS_PER_PREDICT = 2
 MAX_STATIONS_PER_DISTRICT = 6
@@ -262,6 +264,96 @@ def predict_district(districts: list, horizon_days: int = 7) -> dict:
 
 # ── OpenAI-compatible schemas (native tool calling) + dispatcher ──────────
 
+def describe_tables() -> dict:
+    """Schema catalog for the SQL surface (discover step, no DB hit)."""
+    from .schema import CATALOG
+
+    return {
+        "dialect": "sqlite",
+        "tables": [
+            {"name": t, "description": m["description"], "columns": sorted(m["columns"].keys())}
+            for t, m in CATALOG.items()
+        ],
+        "notes": (
+            "Join on station_id. gauge_state.date is TEXT YYYY-MM-DD. "
+            "District names are NOT in the database."
+        ),
+    }
+
+
+def run_sql(sql: str) -> dict:
+    """Run a read-only SELECT through the guard + read-only executor.
+
+    Returns {ok, columns, rows, row_count, truncated, sql, error}.
+    Repairs: on ok=false, rewrite the SQL using the error and retry.
+    """
+    return execute_sql(sql)
+
+
+CANNED_TOP_FLOW = (
+    "SELECT s.station_id, MAX(g.raw_streamflow) AS peak "
+    "FROM station_static s JOIN gauge_state g ON g.station_id = s.station_id "
+    "GROUP BY s.station_id ORDER BY peak DESC LIMIT 5"
+)
+CANNED_MAX_RP = (
+    "SELECT station_id, station_name, rp_2, rp_5, rp_15, rp_20 "
+    "FROM station_static ORDER BY rp_20 DESC LIMIT 5"
+)
+
+
+def charts_from_rows(rows: list, columns: list) -> list:
+    """Build chart cards from arbitrary SQL rows (station_id + date + flow)."""
+    if not rows:
+        return []
+    lower = [str(c).lower() for c in columns]
+    if "station_id" not in lower:
+        return []
+    date_col = next((c for c in columns if str(c).lower() in ("date", "peak_date", "day")), None)
+    flow_col = next(
+        (c for c in columns
+         if str(c).lower() in ("raw_streamflow", "peak", "streamflow", "flow", "rainfall_mm")),
+        None,
+    )
+    if date_col is None or flow_col is None:
+        return []
+    flood_db = _db()
+    grouped: dict = {}
+    for r in rows:
+        try:
+            sid = int(r.get("station_id"))
+            grouped.setdefault(sid, []).append(r)
+        except (TypeError, ValueError):
+            continue
+    charts = []
+    for sid, rs in grouped.items():
+        station = flood_db.get_station(sid)
+        if not station:
+            continue
+        station = dict(station)
+        pts = []
+        for r in rs:
+            try:
+                pts.append({
+                    "date": str(r.get(date_col)),
+                    "streamflow": round(float(r.get(flow_col)), 1),
+                    "kind": "past",
+                })
+            except (TypeError, ValueError):
+                continue
+        pts.sort(key=lambda p: p["date"])
+        peak = max([p["streamflow"] for p in pts] or [0.0])
+        charts.append({
+            "station_id": sid,
+            "station_name": station.get("station_name", ""),
+            "district": district_map.district_of_station(station),
+            "thresholds": thresholds_of(station),
+            "chart": pts,
+            "severity": severity_of(peak, station),
+            "peak_flow": peak,
+            "peak_date": next((p["date"] for p in pts if p["streamflow"] == peak), ""),
+        })
+    return charts
+
 TOOL_SCHEMAS = [
     {
         "type": "function",
@@ -329,12 +421,47 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "describe_tables",
+            "description": (
+                "Re-read the database schema (tables, columns, meanings). "
+                "Call first when unsure which table holds an answer."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_sql",
+            "description": (
+                "Run a read-only SQLite SELECT for cross-station analytics "
+                "(top-N, max/min, aggregates, history ranges). "
+                "Only allowlisted tables/columns, explicit columns (no *), "
+                "LIMIT <= 100. On error, rewrite and retry."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "Single SELECT statement.",
+                    },
+                },
+                "required": ["sql"],
+            },
+        },
+    },
 ]
 
 _DISPATCH = {
     "predict_district": predict_district,
     "station_history": station_history,
     "district_stations": district_stations,
+    "describe_tables": describe_tables,
+    "run_sql": run_sql,
 }
 
 

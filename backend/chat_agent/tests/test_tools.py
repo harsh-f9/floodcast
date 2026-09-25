@@ -122,7 +122,8 @@ class TestDispatcher(unittest.TestCase):
 
     def test_schemas_are_native_tool_format(self):
         names = {t["function"]["name"] for t in tools.TOOL_SCHEMAS}
-        self.assertEqual(names, {"predict_district", "station_history", "district_stations"})
+        self.assertEqual(names, {"predict_district", "station_history", "district_stations",
+                                 "describe_tables", "run_sql"})
         for t in tools.TOOL_SCHEMAS:
             self.assertEqual(t["type"], "function")
             self.assertIn("parameters", t["function"])
