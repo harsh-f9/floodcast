@@ -65,6 +65,11 @@ Rules:
   invent flows.
 - For district rainfall questions use district_rainfall (daily averages across
   the district's gauges). Rainfall history is OBSERVED data, not a forecast.
+- The agent is not read-only: when stored rainfall ends before the requested
+  window (stale anchor), call ensure_rainfall to fetch the missing days from
+  Open-Meteo (in-project API) and SAVE them, then re-read with
+  district_rainfall/station_history. Same for forecasts: predict_*/sweep_*
+  persist their outputs. Never use web search; only built-in tools.
 - "Past N days" counts back from the latest AVAILABLE date in the database,
   not from today. Always compare that anchor to today and state plainly how
   stale the data is (e.g. "latest available 2026-09-22, 4 days ago").
@@ -479,7 +484,7 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
             })
         elif tool == "district_rainfall":
             c = out.get("chart", {}) or {}
-            charts.append({
+            card = {
                 "station_id": c.get("station_id", -1),
                 "station_name": c.get("station_name", ""),
                 "district": c.get("district", ""),
@@ -490,7 +495,12 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                 "severity": c.get("severity", ""),
                 "peak_flow": c.get("peak_flow"),
                 "peak_date": c.get("peak_date", ""),
-            })
+            }
+            # Re-reads (e.g. after backfill) replace the earlier card.
+            charts[:] = [x for x in charts
+                         if not (x["station_id"] == card["station_id"]
+                                 and x.get("label", "") == card["label"])]
+            charts.append(card)
         elif tool == "station_history":
             charts.append({
                 "station_id": out.get("station_id", -1),
@@ -572,8 +582,13 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
             _record("predict_station", {"station_id": intent["station_id"],
                                         "horizon_days": horizon_days})
         elif intent["kind"] == "district_rainfall":
-            _record("district_rainfall", {"district": intent["districts"][0],
-                                          "days": intent["days"]})
+            first = _record("district_rainfall", {"district": intent["districts"][0],
+                                                  "days": intent["days"]})
+            if first.get("stale_days", 0) > 2:
+                _record("ensure_rainfall", {"district": intent["districts"][0],
+                                            "days": intent["days"]})
+                _record("district_rainfall", {"district": intent["districts"][0],
+                                              "days": intent["days"]})
         elif intent["kind"] == "sweep":
             scope = {"horizon_days": horizon_days}
             if intent["districts"]:

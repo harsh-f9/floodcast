@@ -4,6 +4,7 @@ Each flag defaults ON and is toggled without code changes via env:
 
     CHAT_DATE_IN_PROMPT=0       # hide today's date from the system prompt
     CHAT_DISTRICT_RAINFALL=0    # disable the district_rainfall tool
+    CHAT_RAINFALL_BACKFILL=0    # disable live Open-Meteo rainfall backfill (read-only mode)
 
 To add a capability: add a flag here, gate the tool in TOOL_SCHEMAS via
 tool_enabled(), and gate any prompt text on the flag. To migrate a feature
@@ -27,8 +28,13 @@ def district_rainfall() -> bool:
     return _flag("CHAT_DISTRICT_RAINFALL", True)
 
 
+def rainfall_backfill() -> bool:
+    return _flag("CHAT_RAINFALL_BACKFILL", True)
+
+
 TOOL_FLAGS = {
     "district_rainfall": district_rainfall,
+    "ensure_rainfall": rainfall_backfill,
 }
 
 

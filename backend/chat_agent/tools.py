@@ -387,6 +387,91 @@ def district_rainfall(district: str, days: int = 7) -> dict:
     }
 
 
+# ── Tool: ensure_rainfall (live backfill → persist → re-read) ──────────────
+
+RAINFALL_BACKFILL_CAP = 40  # max stations per direct call (HTTP budget)
+RAINFALL_LOOKBACK_DAYS = 92  # Open-Meteo reliable past window
+RAINFALL_LOOKAHEAD_DAYS = 7
+
+
+def _fetch_rain_multi(coords: list, start: str, end: str) -> list:
+    # Same Windows cp1252 guard as _predict_one: prediction_service prints
+    # emoji status lines that crash non-UTF-8 consoles.
+    import contextlib
+    import io
+
+    try:
+        from Flood_prediction.prediction_service import fetch_rainfall_batch_multi  # type: ignore
+    except ImportError:
+        from prediction_service import fetch_rainfall_batch_multi  # type: ignore
+    with contextlib.redirect_stdout(io.StringIO()):
+        return fetch_rainfall_batch_multi(coords, start, end)
+
+
+def ensure_rainfall(district: str | None = None, station_ids: list | None = None,
+                    days: int = 7) -> dict:
+    """Fetch MISSING recent rainfall from Open-Meteo (in-project API) and persist
+    it to station_rainfall_history for future use. Read-only DB queries come first;
+    call this only for date ranges with no stored rows.
+
+    Only dates the API actually returns are inserted (INSERT OR IGNORE, so
+    re-runs are free). Window is clamped to the reliable API range.
+    """
+    from . import flags as _flags
+    from . import jobs as _jobs
+
+    if not _flags.rainfall_backfill():
+        raise ValueError("rainfall backfill is disabled by feature flag (read-only mode).")
+    days = max(1, min(int(days), 30))
+    flood_db = _db()
+    stations = []
+    if district:
+        stations = district_map.stations_for_district(district)
+        if not stations:
+            raise ValueError(f"Unknown district '{district}'.")
+    mapping = district_map.gauge_to_district()
+    for sid in station_ids or []:
+        st = flood_db.get_station(int(sid))
+        if not st:
+            raise ValueError(f"Station {sid} not found.")
+        if all(s["station_id"] != int(sid) for s in stations):
+            stations.append({**dict(st), **mapping.get(st.get("station_name", ""), {})})
+    if not stations:
+        raise ValueError("Backfill scope is empty: give a district or station_ids.")
+    job_id = _jobs.current_job()
+    if not job_id and len(stations) > RAINFALL_BACKFILL_CAP:
+        raise ValueError(
+            f"Scope has {len(stations)} stations; max {RAINFALL_BACKFILL_CAP} per direct call. "
+            "Split by district or run as a background job.")
+    today = today_ist()
+    start = max(today - timedelta(days=RAINFALL_LOOKBACK_DAYS),
+                today - timedelta(days=days - 1)).isoformat()
+    end = today.isoformat()  # history only; forecast rain is fetched by the predict path
+    coords = [{"station_id": s["station_id"], "latitude": s["latitude"],
+               "longitude": s["longitude"]} for s in stations]
+    if job_id:
+        _jobs.set_progress(job_id, 0, len(coords), f"rainfall backfill {start}..{end}")
+    fetched = _fetch_rain_multi(coords, start, end)
+    inserted = 0
+    for entry in fetched or []:
+        sid = entry.get("station_id")
+        daily = entry.get("daily") or {}
+        dates = daily.get("time") or []
+        rains = daily.get("precipitation_sum") or []
+        for d, r in zip(dates, rains):
+            try:
+                flood_db.insert_rainfall(int(sid), str(d), float(r or 0.0))
+                inserted += 1
+            except (TypeError, ValueError):
+                continue
+    if job_id:
+        _jobs.set_progress(job_id, len(coords), len(coords), "rainfall backfill done")
+    event("rainfall.backfill", district=district or "",
+          stations=len(coords), window=f"{start}..{end}", inserted=inserted)
+    return {"district": district or "", "stations": len(coords),
+            "window": {"start": start, "end": end}, "inserted": inserted}
+
+
 # ── OpenAI-compatible schemas (native tool calling) + dispatcher ──────────
 
 def describe_tables() -> dict:
@@ -723,6 +808,30 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "ensure_rainfall",
+            "description": (
+                "Fetch MISSING recent rainfall from Open-Meteo and SAVE it to "
+                "the database for future use. Call when stored rainfall ends "
+                "before the requested window (stale anchor) and the user needs "
+                "recent days. Then re-read with district_rainfall/station_history."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "district": {"type": "string", "description": "District name."},
+                    "station_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Explicit station ids.",
+                    },
+                    "days": {"type": "integer", "description": "Lookback window 1-30.", "default": 7},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "describe_tables",
             "description": (
                 "Re-read the database schema (tables, columns, meanings). "
@@ -761,6 +870,7 @@ _DISPATCH = {
     "sweep_stations": sweep_stations,
     "station_history": station_history,
     "district_rainfall": district_rainfall,
+    "ensure_rainfall": ensure_rainfall,
     "district_stations": district_stations,
     "describe_tables": describe_tables,
     "run_sql": run_sql,
@@ -828,6 +938,10 @@ def _result_stats(name: str, out) -> dict:
             return {"district": out.get("district"), "anchor": out.get("anchor"),
                     "stale_days": out.get("stale_days", 0),
                     "days_returned": out.get("days_returned", 0)}
+        if name == "ensure_rainfall":
+            return {"stations": out.get("stations", 0),
+                    "window": out.get("window", {}),
+                    "inserted": out.get("inserted", 0)}
         if name == "district_stations":
             return {"count": out.get("count", 0)}
         if name == "run_sql":
