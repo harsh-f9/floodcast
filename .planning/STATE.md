@@ -1,8 +1,9 @@
 # STATE
 
 - Milestone: v2-prod-harden
-- Hosting decision: LAPTOP PRIMARY, Render fallback mirror (user-approved).
-- Boot-anchor live: `anchor_db_for_yesterday()` in baseflow_glofas + background AnchorThread in startup (DRY_RUN-aware, never blocks/crashes boot). Verified: idempotent skip (temp DB), live resolve 09-22 present zero-writes, full local uvicorn boot (health/stations/station-0 200, scheduler + alerts mounted, anchor in background).
-- Local run: `start_local.bat` (verified), uvicorn installed. `INTERVIEW_GUIDE.md`: night-before, morning-of, remote-access (tunnel + Vercel switch), boot sequence, Render-fallback lines, keep-alive checklist, emergency lines.
-- OPS_RUNBOOK.md reframed laptop-first. Local DB still 378 (reseed→367 on wipe).
-- Still held: residual percentiles → intervals UI, dummy-API label, ProjectDetail live page, stamp footer, Vercel URL switch (needs tunnel URL at the time).
+- Anchor floor (user order): NEVER July. `MIN_ANCHOR=2026-09-22` in baseflow_glofas.
+  Fresh seed → 367 stations, gauge ONLY 09-22 (verified on temp DB). Boot anchor:
+  latest-published via CDS lookback, else committed floor file (verified `anchored-floor`
+  367 rows from July-only DB with CDS 400). Discharge 07-10 survives only as fallback
+  when floor file missing (never on Render — file is committed).
+- User deploying Render manually with env vars set. Code pushed; auto-deploy picks it up.

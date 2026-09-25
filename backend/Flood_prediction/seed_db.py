@@ -99,27 +99,41 @@ def seed():
     )
     print(f"   ✅ Inserted {len(station_rows)} stations into station_static.")
 
-    # ── 4. Seed gauge_state with March 24 observed streamflow ──────────
-    print("💾 Seeding gauge_state with March 24 discharge...")
+    # ── 4. Seed gauge_state: Sept floor first (never July when avoidable) ──
+    # Prefers committed deploy/baseflow/sync_streamflow_2026-09-22.json (367 stable IDs);
+    # falls back to discharge_1007.csv BOOTSTRAP_DATE only if the floor file is missing.
+    import json as _json
+
+    _floor = os.path.join(DEPLOY_DIR, "baseflow", "sync_streamflow_2026-09-22.json")
     gauge_rows = []
-    matched = 0
-    for _, row in gauges.iterrows():
-        station_name = row["station_name"]
-        discharge_val = discharge_map.get(station_name, 0.0)
-        if station_name in discharge_map:
-            matched += 1
-        gauge_rows.append((
-            int(row["station_id"]),
-            BOOTSTRAP_DATE,
-            float(discharge_val),
-        ))
+    if os.path.exists(_floor):
+        with open(_floor, encoding="utf-8") as _f:
+            _payload = _json.load(_f)
+        for _sid, _dated in _payload.items():
+            for _d, _v in _dated.items():
+                gauge_rows.append((int(_sid), str(_d), float(_v)))
+        print(f"💾 Seeding gauge_state from Sept floor ({_floor}): {len(gauge_rows)} rows...")
+    else:
+        print("💾 Seeding gauge_state with discharge fallback (floor file missing)...")
+        matched = 0
+        for _, row in gauges.iterrows():
+            station_name = row["station_name"]
+            discharge_val = discharge_map.get(station_name, 0.0)
+            if station_name in discharge_map:
+                matched += 1
+            gauge_rows.append((
+                int(row["station_id"]),
+                BOOTSTRAP_DATE,
+                float(discharge_val),
+            ))
+        print(f"   ({matched} matched discharge values)")
 
     executemany(
         "INSERT OR IGNORE INTO gauge_state (station_id, date, raw_streamflow) "
         "VALUES (?,?,?)",
         gauge_rows
     )
-    print(f"   ✅ Inserted {len(gauge_rows)} gauge_state records ({matched} matched discharge values).")
+    print(f"   ✅ Inserted gauge_state records.")
 
     # ── 5. Seed station_flow_percentiles (empty arrays) ────────────────
     print("💾 Seeding station_flow_percentiles...")

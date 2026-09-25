@@ -42,6 +42,10 @@ DEPLOY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "deploy")
 GAUGES_CSV = os.path.join(DEPLOY_DIR, "gauges_info.csv")
 BASEFLOW_DIR = os.path.join(DEPLOY_DIR, "baseflow")
 
+# Floor: anchors never older than this (committed sync JSON, no CDS needed).
+MIN_ANCHOR = datetime.date(2026, 9, 22)
+MIN_ANCHOR_SYNC_JSON = os.path.join(BASEFLOW_DIR, "sync_streamflow_2026-09-22.json")
+
 # Keep in sync with validation.EXCLUDED_11, but do not import at top (migratable).
 EXCLUDED_11 = frozenset({
     "hybas_4121486100", "hybas_4120878420", "hybas_4120888940",
@@ -213,6 +217,28 @@ def convert_existing_csv(csv_path: str, target: datetime.date) -> tuple[str, str
     return save_outputs(target, rows, flows)
 
 
+def anchor_from_floor_file(db) -> dict:
+    """Last-resort anchor from the committed 2026-09-22 sync JSON (no CDS, no network).
+    `db` is the database module (passed in to keep imports lazy). Validates every row."""
+    try:
+        from Flood_prediction.validation import validate_date, validate_streamflow
+    except ImportError:
+        from validation import validate_date, validate_streamflow  # type: ignore
+    with open(MIN_ANCHOR_SYNC_JSON, encoding="utf-8") as f:
+        payload = json.load(f)
+    iso, n = MIN_ANCHOR.isoformat(), 0
+    for sid, dated in payload.items():
+        for d, v in dated.items():
+            if d != iso:
+                continue
+            try:
+                db.insert_gauge_state(int(sid), validate_date(d), validate_streamflow(v))
+                n += 1
+            except ValueError:
+                continue
+    return {"status": "anchored-floor", "date": iso, "stations": n}
+
+
 def anchor_db_for_yesterday(lookback: int = 7) -> dict:
     """Startup helper: fill gauge_state for latest-published date (default yesterday IST).
 
@@ -238,6 +264,8 @@ def anchor_db_for_yesterday(lookback: int = 7) -> dict:
     resolved = target
     flows: dict[str, float] = {}
     for _ in range(max(lookback, 1)):
+        if resolved < MIN_ANCHOR:
+            break  # too stale to trust CDS latency path; use floor file below
         workdir = os.path.join(BASEFLOW_DIR, "tmp", resolved.strftime("%Y%m%d"))
         os.makedirs(workdir, exist_ok=True)
         try:
@@ -249,7 +277,9 @@ def anchor_db_for_yesterday(lookback: int = 7) -> dict:
                 resolved = resolved - datetime.timedelta(days=1)
                 continue
             raise
-    if not flows:
+    if not flows or resolved < MIN_ANCHOR:
+        if os.path.exists(MIN_ANCHOR_SYNC_JSON):
+            return anchor_from_floor_file(db)
         return {"status": "unpublished", "target": target.isoformat()}
 
     try:
