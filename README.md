@@ -1,325 +1,112 @@
-# 🌡️ VAE Weather Coldwave Analysis Application
+<div align="center">
+  <div style="background:#0a3d62;border-radius:12px;padding:28px 20px;">
+    <h1 style="color:#eef7ff;margin:0;">FloodCast</h1>
+    <p style="color:#9ec9e8;margin:8px 0 0;">Operational streamflow forecasting for Uttar Pradesh — 367 river gauges, one live picture</p>
+  </div>
+  <p>
+    <a href="https://floodcast-backend-vx1j.onrender.com/stations"><img src="https://img.shields.io/badge/API-live-43a047?style=flat-square" alt="API live"></a>
+    <img src="https://img.shields.io/badge/stations-367-0a3d62?style=flat-square" alt="367 stations">
+    <img src="https://img.shields.io/badge/model-hybrid_LSTM_XGBoost-12588c?style=flat-square" alt="hybrid model">
+    <img src="https://img.shields.io/badge/holdout_NSE-0.92-ea580c?style=flat-square" alt="NSE 0.92">
+  </p>
+</div>
 
-A full-stack application for analyzing weather patterns and detecting coldwaves using a Variational Autoencoder (VAE) deep learning model.
+![Flood monitoring dashboard](public/insight-hero-flood.png)
 
-## 🎯 Overview
+## What this is
 
-This application combines a **FastAPI backend** with a **React frontend** to provide real-time coldwave detection based on weather data. The system uses a trained VAE model to identify anomalous weather patterns that indicate coldwave conditions.
+FloodCast turns fragmented river-monitoring data into a single operational view: how much water
+is moving through every major gauge in Uttar Pradesh, how that compares to historical flood
+thresholds, and what the next 7 days look like. It is built for people who have to make calls
+before the water arrives — district officers, infrastructure operators, and response teams.
 
-## 🏗️ Architecture
+## Features
 
-```
-crowebsite/
-├── backend/                 # FastAPI Backend
-│   ├── app/
-│   │   ├── main.py         # API endpoints and server
-│   │   ├── model.py        # VAE model architecture
-│   │   ├── artifacts/
-│   │   │   └── vae_weather.pth  # Trained model weights
-│   │   └── __init__.py
-│   ├── requirements.txt    # Python dependencies
-│   └── README.md          # Backend documentation
-├── src/                    # React Frontend
-│   ├── pages/
-│   │   └── Projects.tsx   # Main UI with coldwave analysis
-│   └── ...
-├── start.bat              # Windows startup script
-└── package.json           # Frontend dependencies
-```
+**Live gauge network.** 367 monitoring stations across the state on an interactive map, each
+colored by live risk status — NORMAL, WATCH, WARNING, DANGER, EXTREME — computed against
+that gauge's own return-period thresholds (2/5/15/20-year), not a one-size-fits-all number.
 
-## ✨ Features
+**14-day streamflow trajectories.** Every station shows observed recent flows chained into a
+7-day hybrid-model forecast, plotted against its flood thresholds so exceedances are visible
+at a glance.
 
-### Backend (FastAPI)
-- ✅ **VAE Model Loading**: Automatic model initialization on startup
-- ✅ **Coldwave Detection**: Anomaly detection using reconstruction error
-- ✅ **REST API**: Well-documented endpoints with Swagger UI
-- ✅ **CORS Support**: Configured for local development
-- ✅ **Health Checks**: Monitor service status
+**District briefings in one click.** Batch-predict a whole district (or the full state) and get
+an auto-written briefing: peak station, peak flow versus thresholds, severity counts, the
+rainiest window, and a recommended action — ready to copy or download. No CSV merging, no
+hand-written summaries.
 
-### Frontend (React + TypeScript)
-- ✅ **Interactive UI**: Modern, responsive design with Framer Motion animations
-- ✅ **Real-time Analysis**: Send weather data and get instant results
-- ✅ **Visual Feedback**: Color-coded alerts for coldwave detection
-- ✅ **Data Visualization**: Display reconstruction, latent vectors, and metrics
-- ✅ **Error Handling**: User-friendly error messages
+**Versioned, traceable forecasts.** Every prediction carries its model version, source-data
+date, and generation ID, so any number on screen can be traced back to exactly what produced it.
 
-## 🚀 Quick Start
+**Fresh data pipeline.** River states anchor nightly to the latest published GloFAS run with
+automatic fallback, rainfall refreshes in rate-limit-safe batches, and every ingest passes
+validation (threshold ordering, geographic bounds, physical ranges) before it touches the database.
 
-### Prerequisites
+**Quality flags.** Silent stations, out-of-range values, and neighbor-spike anomalies are flagged
+in the database, and forecasts that hit physical limits are clamped rather than stored.
 
-- **Python 3.8+** - [Download](https://www.python.org/downloads/)
-- **Node.js 16+** - [Download](https://nodejs.org/)
-- **Git** - [Download](https://git-scm.com/)
+**Alert delivery.** DANGER and EXTREME forecasts can push to a response-group chat automatically.
 
-### Option 1: Automated Setup (Windows)
+## From research to operations
 
-Simply double-click `start.bat` or run:
+The model behind the dashboard comes from a full research program, kept disciplined enough to trust:
 
-```bash
-start.bat
-```
+- **Sources unified:** Google Flood Hub gauge archive, HydroATLAS basin parameters, GloFAS
+  reanalysis, gridded rainfall, and live Open-Meteo — resolved to one station master with a
+  documented audit trail.
+- **Panel:** 3,213,819 daily records (367 gauges × 8,757 days, 2000–2023) with physics-aware
+  features — routing lags, antecedent moisture, monsoon seasonality, return-period exceedance.
+- **Leak discipline:** all scalers fit on the chronological train split only; no shuffled
+  cross-validation near time series.
+- **Model:** 2-layer LSTM over 15-day windows plus an XGBoost residual corrector on basin
+  geography. Held-out test: MAE 0.049, RMSE 0.315, NSE 0.924 (LSTM-only baseline NSE 0.535).
 
-This will:
-1. Check for Python and Node.js
-2. Create a virtual environment
-3. Install all dependencies
-4. Start both servers in separate windows
+## Tech stack
 
-### Option 2: Manual Setup
+| Layer | Technology |
+|---|---|
+| Model | PyTorch (LSTM) + XGBoost, scikit-learn scaling, xarray/zarr ingestion |
+| API | FastAPI + Pydantic, SQLite (WAL), APScheduler |
+| Web | React 18 + TypeScript + Vite, Tailwind, Leaflet maps, Recharts |
+| Deploy | Render (API) + Vercel (site), nightly anchor pipeline |
 
-#### Backend Setup
+## API
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/stations` | All monitoring stations |
+| GET | `/station/{id}` | Statics, thresholds, recent flows |
+| POST | `/predict` | Streamflow forecast (`station_id`, `date`, optional rainfall override) |
+| POST | `/api/admin/alert-webhook` | DANGER/EXTREME push notification |
 
-2. **Create virtual environment:**
-   ```bash
-   python -m venv venv
-   ```
-
-3. **Activate virtual environment:**
-   - Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-   - Linux/Mac:
-     ```bash
-     source venv/bin/activate
-     ```
-
-4. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-5. **Start the server:**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-#### Frontend Setup
-
-1. **Navigate to project root:**
-   ```bash
-   cd ..
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-
-## 🌐 Access the Application
-
-Once both servers are running:
-
-- **Frontend UI**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-
-## 📊 How It Works
-
-### VAE Model Architecture
-
-```
-Input (5 features) → Encoder (64→32) → Latent Space (8D) → Decoder (32→64) → Output (5 features)
-```
-
-**Input Features:**
-- Minimum Temperature (°C)
-- Maximum Temperature (°C)
-- Humidity (%)
-- Wind Speed (m/s)
-- Pressure (hPa)
-
-### Coldwave Detection Logic
-
-1. **Encoding**: Weather features are compressed into an 8-dimensional latent space
-2. **Decoding**: The model reconstructs the original features
-3. **Error Calculation**: Mean Squared Error (MSE) between input and reconstruction
-4. **Detection**: High reconstruction error indicates anomalous patterns (coldwave)
-5. **Threshold**: Default threshold is 5.0 (adjustable in `backend/app/main.py`)
-
-### Example Request
+Example:
 
 ```bash
-curl -X POST "http://localhost:8000/predict" \
+curl -X POST "https://floodcast-backend-vx1j.onrender.com/predict" \
   -H "Content-Type: application/json" \
-  -d '{
-    "features": {
-      "minimum_temperature": 4.2,
-      "maximum_temperature": 12.1,
-      "humidity": 78,
-      "wind_speed": 6.5,
-      "pressure": 1014
-    }
-  }'
+  -d '{"station_id": 0, "date": "2026-09-23"}'
 ```
-
-### Example Response
 
 ```json
 {
-  "reconstruction": {
-    "minimum_temperature": 4.15,
-    "maximum_temperature": 12.05,
-    "humidity": 77.8,
-    "wind_speed": 6.48,
-    "pressure": 1013.9
-  },
-  "latent_vector": [0.234, -0.567, 0.891, 0.123, -0.456, 0.789, 0.012, -0.345],
-  "reconstruction_error": 0.0234,
-  "is_coldwave": false,
-  "coldwave_confidence": 0.468
+  "station_id": 0,
+  "date": "2026-09-23",
+  "pred_raw_streamflow": 0.0,
+  "anchor_streamflow": 0.19,
+  "model_version": "hybrid-lstm-xgb-32d-256h-835c1591",
+  "db_date": "2026-09-23",
+  "generation_id": "63b7b4f490ac",
+  "unit": "m³/s"
 }
 ```
 
-## 🎨 Using the Frontend
+![Monitoring coverage](public/insight-card-monitoring.png)
 
-1. **Navigate to Projects Section**: The coldwave analysis is in the "Projects" page
-2. **Find Coldwave Analysis Card**: Look for the card with the ❄️ icon
-3. **Click "Run Coldwave VAE Analysis"**: This expands the analysis panel
-4. **Edit Weather Data**: Modify the JSON input with your weather features
-5. **Run Analysis**: Click "Run Analysis" to send data to the backend
-6. **View Results**: See the coldwave detection status, reconstruction error, and latent vectors
+## In progress
 
-## 🔧 Configuration
-
-### Backend Configuration
-
-Edit `backend/app/main.py` to adjust:
-
-- **Coldwave Threshold**: Change `COLDWAVE_THRESHOLD` (default: 5.0)
-- **CORS Origins**: Add/remove allowed frontend URLs
-- **Model Path**: Update `MODEL_PATH` if needed
-
-### Frontend Configuration
-
-The frontend uses environment variables. Create a `.env` file in the project root:
-
-```env
-VITE_BACKEND_URL=http://localhost:8000
-```
-
-## 📦 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | API information |
-| GET | `/health` | Health check |
-| POST | `/predict` | Weather analysis |
-| POST | `/api/analyze-coldwave` | Coldwave analysis (alias) |
-| GET | `/docs` | Swagger UI documentation |
-
-## 🧪 Testing
-
-### Test the Backend
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Coldwave analysis
-curl -X POST "http://localhost:8000/predict" \
-  -H "Content-Type: application/json" \
-  -d '{"features": {"minimum_temperature": 2.0, "maximum_temperature": 8.0, "humidity": 85, "wind_speed": 10.0, "pressure": 1010}}'
-```
-
-### Test the Frontend
-
-1. Open http://localhost:5173
-2. Navigate to the Projects section
-3. Click on "Coldwave Analysis"
-4. Use the interactive form to test different weather scenarios
-
-## 🐛 Troubleshooting
-
-### Backend Issues
-
-**Model Not Loading:**
-- Verify `backend/app/artifacts/vae_weather.pth` exists
-- Check model architecture matches saved weights
-- Ensure PyTorch is installed correctly
-
-**Port 8000 Already in Use:**
-```bash
-# Use a different port
-uvicorn app.main:app --reload --port 8001
-
-# Update frontend .env file
-VITE_BACKEND_URL=http://localhost:8001
-```
-
-### Frontend Issues
-
-**CORS Errors:**
-- Ensure backend is running
-- Check CORS origins in `backend/app/main.py`
-- Verify `VITE_BACKEND_URL` is correct
-
-**Dependencies Not Installing:**
-```bash
-# Clear cache and reinstall
-npm cache clean --force
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## 📚 Tech Stack
-
-### Backend
-- **FastAPI** - Modern Python web framework
-- **PyTorch** - Deep learning framework
-- **Uvicorn** - ASGI server
-- **Pydantic** - Data validation
-
-### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Framer Motion** - Animations
-- **Tailwind CSS** - Styling
-
-## 🤝 Contributing
-
-This is a project for the Climate Resilience Observatory (CRO) in Uttar Pradesh.
-
-## 📄 License
-
-This project is part of the CRO Website application.
-
-## 🎓 Model Information
-
-The VAE model was trained on historical weather data to learn normal weather patterns. When presented with new data:
-- **Low reconstruction error** = Normal weather patterns
-- **High reconstruction error** = Anomalous patterns (potential coldwave)
-
-The model uses an 8-dimensional latent space to capture the essential features of weather patterns, making it efficient for real-time analysis.
-
-## 🔮 Future Enhancements
-
-- [ ] Historical data visualization
-- [ ] Multi-day forecasting
-- [ ] Model retraining interface
-- [ ] Export analysis reports
-- [ ] Email/SMS alerts for coldwave detection
-- [ ] Integration with real-time weather APIs
-
-## 📞 Support
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Review the API documentation at `/docs`
-3. Check backend logs for error messages
+Prediction intervals from held-out residuals, what-if rainfall scenarios, and per-user alert
+subscriptions — each designed against the same rule as everything above: additive, versioned,
+and removable without touching the core.
 
 ---
-
-**Built with ❤️ for Climate Resilience**
+Built for the Climate Resilience Observatory (CRO), Uttar Pradesh.
