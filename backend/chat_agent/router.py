@@ -54,11 +54,14 @@ if _HAS_FASTAPI:
         )
         return {
             "reply": out["reply"],
+            "raw_reply": out.get("raw_reply", ""),
             "tool_trace": [ToolTrace(**t).model_dump() for t in out.get("tool_trace", [])],
             "charts": out.get("charts", []),
             "briefing": out.get("briefing"),
             "model": out.get("model", ""),
             "llm_used": out.get("llm_used", False),
+            "summary_used": out.get("summary_used", False),
+            "summary_model": out.get("summary_model", ""),
         }
 else:
     router = None

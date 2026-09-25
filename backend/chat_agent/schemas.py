@@ -33,11 +33,14 @@ class ToolTrace(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    raw_reply: str = ""
     tool_trace: list[ToolTrace] = []
     charts: list[ChartPayload] = []
     briefing: Optional[str] = None
     model: str = ""
     llm_used: bool = False
+    summary_used: bool = False
+    summary_model: str = ""
 
     model_config = {"extra": "ignore"}
 
