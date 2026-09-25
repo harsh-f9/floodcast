@@ -68,8 +68,8 @@ const FlippableMagneticCard = ({ project, magneticStrength = 20 }: FlippableMagn
       onMouseEnter={handleMouseEnter}
       animate={{ x: position.x, y: position.y }}
       transition={{ type: "spring", stiffness: 350, damping: 15, mass: 0.3 }}
-      className="w-full h-full relative"
-      style={{ minHeight: project.featured ? '320px' : '240px', perspective: 1200 }}
+      className={`w-full relative ${project.featured ? 'h-72 md:h-80' : 'h-60'}`}
+      style={{ perspective: 1200 }}
     >
       <motion.div
         animate={{ rotateY: isFlipped ? 180 : 0 }}
