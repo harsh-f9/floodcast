@@ -53,3 +53,23 @@ class StatusResponse(BaseModel):
     districts: int
 
     model_config = {"extra": "ignore"}
+
+
+class JobSubmitResponse(BaseModel):
+    job_id: str
+
+    model_config = {"extra": "ignore"}
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str = ""
+    progress_done: int = 0
+    progress_total: int = 0
+    progress_note: str = ""
+    question: str = ""
+    events: list[dict] = []
+    result: Optional[dict] = None
+    error: str = ""
+
+    model_config = {"extra": "ignore"}

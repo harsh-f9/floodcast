@@ -46,6 +46,7 @@ interface Msg {
   trace?: { tool: string; args: Record<string, unknown>; ok: boolean; error: string }[];
   steps?: Step[];
   running?: boolean;
+  progress?: { done: number; total: number; note: string };
 }
 
 const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
@@ -224,6 +225,41 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
     }));
   };
 
+  const stepsFromEvents = (events: any[]): Step[] => {
+    const steps: Step[] = [];
+    const byId = new Map<string, Step>();
+    events.forEach((evt, i) => {
+      if (evt.type === "thinking") {
+        steps.push({ id: `t${i}`, kind: "thinking", text: evt.text, running: false });
+      } else if (evt.type === "tool_start") {
+        const s: Step = { id: evt.id, kind: "tool", name: evt.name, args: evt.args, running: true };
+        byId.set(evt.id, s);
+        steps.push(s);
+      } else if (evt.type === "tool_end") {
+        const s = byId.get(evt.id);
+        if (s) {
+          s.running = false;
+          s.ok = evt.ok;
+          s.latencyMs = evt.latency_ms;
+          s.error = evt.error || undefined;
+        } else {
+          steps.push({ id: evt.id, kind: "tool", name: evt.name || "tool", running: false, ok: evt.ok, error: evt.error || undefined });
+        }
+      } else if (evt.type === "summary_start") {
+        const s: Step = { id: "summary", kind: "thinking", text: "Summarizing results…", running: true };
+        byId.set("summary", s);
+        steps.push(s);
+      } else if (evt.type === "summary_done") {
+        const s = byId.get("summary");
+        if (s) {
+          s.running = false;
+          s.text = undefined;
+        }
+      }
+    });
+    return steps;
+  };
+
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -237,94 +273,56 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       .map((m) => ({ role: m.role, content: m.content }));
     const idx = next.length; // assistant placeholder position
     setMsgs((p) => [...p, { role: "assistant", content: "", steps: [], running: true }]);
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     try {
-      const res = await fetch(getApiUrl("/api/chat/stream"), {
+      // Background job first: survives multi-minute sweeps; poll for timeline.
+      const sub = await fetch(getApiUrl("/api/chat/jobs"), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, horizon_days: 7 }),
       });
-      if (!res.ok || !res.body) throw new Error("stream unavailable");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let gotFrame = false;
-      const applyEvent = (evt: any) => {
-        gotFrame = true;
-        switch (evt.type) {
-          case "thinking":
-            patchMsg(idx, (m) => ({
-              ...m,
-              steps: [...(m.steps || []), { id: `t${(m.steps || []).length}`, kind: "thinking", text: evt.text, running: false }],
-            }));
-            break;
-          case "tool_start":
-            patchMsg(idx, (m) => ({
-              ...m,
-              steps: [...(m.steps || []), { id: evt.id, kind: "tool", name: evt.name, args: evt.args, running: true }],
-            }));
-            break;
-          case "tool_end":
-            patchMsg(idx, (m) => ({
-              ...m,
-              steps: (m.steps || []).map((s) =>
-                s.id === evt.id ? { ...s, running: false, ok: evt.ok, latencyMs: evt.latency_ms, error: evt.error || undefined } : s
-              ),
-            }));
-            break;
-          case "summary_start":
-            patchMsg(idx, (m) => ({
-              ...m,
-              steps: [...(m.steps || []), { id: "summary", kind: "thinking", text: "Summarizing results…", running: true }],
-            }));
-            break;
-          case "summary_done":
-            patchMsg(idx, (m) => ({
-              ...m,
-              steps: (m.steps || []).map((s) => (s.id === "summary" ? { ...s, running: false, text: undefined } : s)),
-            }));
-            break;
-          case "result": {
-            const r = evt.result || {};
-            patchMsg(idx, (m) => ({
-              ...m,
-              content: r.reply || "",
-              charts: r.charts || [],
-              trace: r.tool_trace || [],
-              running: false,
-            }));
-            break;
-          }
-          case "run_error":
-            patchMsg(idx, (m) => ({ ...m, content: `Error: ${evt.error || "request failed"}`, running: false }));
-            break;
-          default:
-            break;
-        }
-      };
+      if (!sub.ok) throw new Error("jobs unavailable");
+      const { job_id } = await sub.json();
+      let fails = 0;
       for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const parts = buf.split("\n\n");
-        buf = parts.pop() || "";
-        for (const part of parts) {
-          const line = part.split("\n").find((l) => l.startsWith("data:"));
-          if (!line) continue;
-          try {
-            const evt = JSON.parse(line.slice(5));
-            if (evt.type === "stream_end") continue;
-            applyEvent(evt);
-          } catch {
-            /* partial frame, ignore */
-          }
+        await sleep(1500);
+        let st: any;
+        try {
+          const pr = await fetch(getApiUrl(`/api/chat/jobs/${job_id}`));
+          if (!pr.ok) throw new Error("poll failed");
+          st = await pr.json();
+        } catch {
+          if (++fails > 8) throw new Error("lost contact with background job");
+          continue;
+        }
+        fails = 0;
+        patchMsg(idx, (m) => ({
+          ...m,
+          steps: stepsFromEvents(st.events || []),
+          progress: { done: st.progress_done || 0, total: st.progress_total || 0, note: st.progress_note || "" },
+        }));
+        if (st.status === "done") {
+          const r = st.result || {};
+          patchMsg(idx, (m) => ({
+            ...m,
+            content: r.reply || "",
+            charts: r.charts || [],
+            trace: r.tool_trace || [],
+            running: false,
+            progress: undefined,
+          }));
+          break;
+        }
+        if (st.status === "failed") {
+          patchMsg(idx, (m) => ({ ...m, content: `Error: ${st.error || "job failed"}`, running: false, progress: undefined }));
+          break;
         }
       }
-      if (!gotFrame) await sendSync(history, idx);
     } catch (e) {
       try {
         await sendSync(history, idx);
       } catch (e2) {
-        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false }));
+        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false, progress: undefined }));
       }
     } finally {
       setLoading(false);
@@ -395,6 +393,19 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
                 {m.steps.map((s) => (
                   <StepRow key={s.id} s={s} />
                 ))}
+              </div>
+            )}
+            {m.running && m.progress && m.progress.total > 0 && (
+              <div className="w-full max-w-[95%]">
+                <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full bg-black transition-all"
+                    style={{ width: `${Math.min(100, Math.round((m.progress.done / m.progress.total) * 100))}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {m.progress.done}/{m.progress.total} stations{m.progress.note ? ` · ${m.progress.note}` : ""}
+                </p>
               </div>
             )}
             {m.role === "assistant" && (

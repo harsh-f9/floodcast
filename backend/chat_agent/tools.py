@@ -409,6 +409,94 @@ def charts_from_rows(rows: list, columns: list) -> list:
         })
     return charts
 
+# ── Tool: sweep_stations (batch backfill: run model, save, rank) ──────────
+
+SWEEP_SYNC_CAP = 40  # max stations per call outside a background job
+SWEEP_TOP_N = 15
+
+
+def _resolve_sweep_stations(districts=None, station_ids=None, all_stations=False) -> list:
+    flood_db = _db()
+    if all_stations:
+        mapping = district_map.gauge_to_district()
+        return [{**dict(s), **mapping.get(s.get("station_name", ""), {})}
+                for s in flood_db.get_all_stations()]
+    out, seen = [], set()
+    for d in districts or []:
+        found = district_map.stations_for_district(d)
+        if not found:
+            raise ValueError(
+                f"Unknown district '{d}'. "
+                f"Known districts include: {', '.join(district_map.all_districts()[:10])}…")
+        for s in found:
+            if s["station_id"] not in seen:
+                seen.add(s["station_id"])
+                out.append(s)
+    mapping = district_map.gauge_to_district()
+    for sid in station_ids or []:
+        sid = int(sid)
+        if sid in seen:
+            continue
+        st = flood_db.get_station(sid)
+        if not st:
+            raise ValueError(f"Station {sid} not found.")
+        seen.add(sid)
+        out.append({**dict(st), **mapping.get(st.get("station_name", ""), {})})
+    return out
+
+
+def sweep_stations(districts=None, station_ids=None, all_stations=False,
+                   horizon_days: int = 7) -> dict:
+    """Run the forecast model over many stations, SAVE results to gauge_state,
+    and return ranked peaks. The backfill-then-read primitive for coverage
+    questions (e.g. top-5 across UP for a date window).
+
+    Per-station failures are isolated (collected, never abort the sweep).
+    Outside a background job, capped at SWEEP_SYNC_CAP stations (HTTP budget);
+    inside a job the full scope runs with progress updates.
+    """
+    from . import jobs as _jobs
+
+    horizon_days = max(MIN_HORIZON_DAYS, min(int(horizon_days), MAX_HORIZON_DAYS))
+    stations = _resolve_sweep_stations(districts, station_ids, all_stations)
+    if not stations:
+        raise ValueError("Sweep scope is empty: give districts, station_ids, or all_stations=true.")
+    job_id = _jobs.current_job()
+    if not job_id and len(stations) > SWEEP_SYNC_CAP:
+        raise ValueError(
+            f"Scope has {len(stations)} stations; max {SWEEP_SYNC_CAP} per direct call. "
+            "Split by district, or run as a background job.")
+    cards, failed = [], []
+    total = len(stations)
+    for i, s in enumerate(stations, 1):
+        try:
+            cards.append(_forecast_one_station(s, horizon_days,
+                                               s.get("district", "")))
+        except Exception as e:
+            failed.append({"station_id": s.get("station_id"), "error": str(e)[:200]})
+        if job_id and (i % 5 == 0 or i == total):
+            _jobs.set_progress(job_id, i, total,
+                               f"sweep {i}/{total} stations (horizon {horizon_days}d)")
+    ranked = sorted(cards, key=lambda c: c.get("peak_flow", 0.0), reverse=True)
+    event("sweep.done", scope={"districts": districts, "n_ids": len(station_ids or []),
+                               "all": bool(all_stations)},
+          swept=len(cards), failed=len(failed), horizon_days=horizon_days)
+    return {
+        "swept": len(cards),
+        "failed": failed,
+        "horizon_days": horizon_days,
+        "top": [{
+            "station_id": c["station_id"],
+            "station_name": c.get("station_name", ""),
+            "district": next((s.get("district", "") for s in stations
+                              if s["station_id"] == c["station_id"]), ""),
+            "peak_flow": c.get("peak_flow"),
+            "peak_date": c.get("peak_date", ""),
+            "severity": c.get("severity", ""),
+        } for c in ranked[:SWEEP_TOP_N]],
+    }
+
+
 TOOL_SCHEMAS = [
     {
         "type": "function",
@@ -502,6 +590,40 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "sweep_stations",
+            "description": (
+                "Batch backfill: run the forecast model over MANY stations "
+                "(a district list, explicit station ids, or all_stations=true), "
+                "SAVE each forecast to the database, and return ranked peaks. "
+                "Use for coverage questions (top-N across stations, date windows "
+                "with missing rows). After sweeping, run_sql to rank and "
+                "station_history for winners' graphs."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "districts": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "District names to sweep.",
+                    },
+                    "station_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Explicit station ids to sweep.",
+                    },
+                    "all_stations": {
+                        "type": "boolean",
+                        "description": "Sweep all ~378 stations (long; background only).",
+                    },
+                    "horizon_days": {"type": "integer", "description": "1-7.", "default": 7},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "describe_tables",
             "description": (
                 "Re-read the database schema (tables, columns, meanings). "
@@ -537,6 +659,7 @@ TOOL_SCHEMAS = [
 _DISPATCH = {
     "predict_district": predict_district,
     "predict_station": predict_station,
+    "sweep_stations": sweep_stations,
     "station_history": station_history,
     "district_stations": district_stations,
     "describe_tables": describe_tables,
@@ -554,8 +677,12 @@ def run_tool(name: str, args: dict) -> dict:
     args = dict(args or {})
     if name in ("station_history", "predict_station") and "station_id" in args:
         args["station_id"] = int(args["station_id"])
-    if name in ("predict_district", "predict_station") and "horizon_days" in args:
+    if name in ("predict_district", "predict_station", "sweep_stations") and "horizon_days" in args:
         args["horizon_days"] = int(args["horizon_days"])
+    if name == "sweep_stations" and "station_ids" in args and args["station_ids"] is not None:
+        args["station_ids"] = [int(x) for x in args["station_ids"]]
+    if name == "sweep_stations" and "all_stations" in args:
+        args["all_stations"] = bool(args["all_stations"])
     safe_args = {k: (str(v)[:200] if k == "sql" else v) for k, v in args.items()}
     event("tool.start", tool=name, args=safe_args)
     t0 = _time.monotonic()
@@ -590,6 +717,9 @@ def _result_stats(name: str, out) -> dict:
                     "peak": out.get("peak_flow"), "peak_date": out.get("peak_date"),
                     "severity": out.get("severity", ""),
                     "chart_points": len(out.get("chart", []) or [])}
+        if name == "sweep_stations":
+            return {"swept": out.get("swept", 0), "failed_n": len(out.get("failed", [])),
+                    "top_n": len(out.get("top", []))}
         if name == "district_stations":
             return {"count": out.get("count", 0)}
         if name == "run_sql":

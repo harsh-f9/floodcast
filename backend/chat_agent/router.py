@@ -19,7 +19,7 @@ if _HAS_FASTAPI:
     from .agent import llm_configured, model_name, run_agent
     from .kill_switch import is_enabled
     from .log import bind as _bind_log
-    from .schemas import ChatRequest, ChatResponse, StatusResponse, ToolTrace
+    from .schemas import ChatRequest, ChatResponse, JobStatusResponse, StatusResponse, ToolTrace
     from . import district_map
 
     router = APIRouter()
@@ -129,6 +129,56 @@ if _HAS_FASTAPI:
             "llm_used": out.get("llm_used", False),
             "summary_used": out.get("summary_used", False),
             "summary_model": out.get("summary_model", ""),
+        }
+
+    @router.post("/api/chat/jobs", status_code=202)
+    def chat_job_submit(req: ChatRequest):
+        """Start a background agentic run (for multi-minute sweeps)."""
+        import json as _json
+
+        from . import jobs as _jobs
+
+        if not is_enabled():
+            raise HTTPException(status_code=503, detail="Chat agent is disabled.")
+        try:
+            job_id = _jobs.submit(
+                [{"role": m.role, "content": m.content} for m in req.messages],
+                horizon_days=req.horizon_days,
+            )
+        except Exception:
+            log.exception("job submit failed")
+            raise HTTPException(status_code=500, detail="Could not start job.")
+        return {"job_id": job_id}
+
+    @router.get("/api/chat/jobs/{job_id}", response_model=JobStatusResponse)
+    def chat_job_status(job_id: str):
+        import json as _json
+
+        from . import jobs as _jobs
+
+        job = _jobs.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        try:
+            events = _json.loads(job.get("events_json") or "[]")
+        except Exception:
+            events = []
+        result = None
+        if job.get("status") == "done" and job.get("result_json"):
+            try:
+                result = _json.loads(job["result_json"])
+            except Exception:
+                result = None
+        return {
+            "job_id": job_id,
+            "status": job.get("status", ""),
+            "progress_done": job.get("progress_done", 0),
+            "progress_total": job.get("progress_total", 0),
+            "progress_note": job.get("progress_note", ""),
+            "question": job.get("question", ""),
+            "events": events[-120:],
+            "result": result,
+            "error": job.get("error", ""),
         }
 else:
     router = None

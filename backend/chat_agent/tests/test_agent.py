@@ -47,9 +47,13 @@ class TestIntentParse(unittest.TestCase):
 
     def test_top_flow_sql(self):
         i = agent.parse_intent("run for all stations, top 5 highest streamflow, graphs past 3 days each")
-        self.assertEqual(i["kind"], "sql_top")
+        self.assertEqual(i["kind"], "sweep")
         self.assertEqual(i["days"], 3)
         self.assertEqual(i["top_n"], 5)
+
+    def test_top_flow_sql_without_all(self):
+        i = agent.parse_intent("top 5 highest streamflow")
+        self.assertEqual(i["kind"], "sql_top")
 
     def test_max_rp_sql(self):
         i = agent.parse_intent("which station has highest rp")
@@ -69,6 +73,14 @@ class TestIntentParse(unittest.TestCase):
         i = agent.parse_intent("predict Agra")
         self.assertEqual(i["kind"], "predict")
         self.assertIn("Agra", i["districts"])
+
+    def test_sweep_all_stations(self):
+        i = agent.parse_intent("sweep all stations and forecast next 3 days")
+        self.assertEqual(i["kind"], "sweep")
+
+    def test_sweep_statewide_top(self):
+        i = agent.parse_intent("top 5 stations state-wide by streamflow")
+        self.assertEqual(i["kind"], "sweep")
 
     def test_none(self):
         i = agent.parse_intent("flood")

@@ -46,7 +46,7 @@ FALLBACK_ATTEMPTS = 2
 SYSTEM_PROMPT = """You are the CRO Flood Assistant, a narrow tool for Uttar Pradesh flood streamflow.
 Rules:
 - You ONLY answer using the provided tools (predict_district, predict_station,
-  station_history, district_stations, describe_tables, run_sql).
+  sweep_stations, station_history, district_stations, describe_tables, run_sql).
 - Never invent streamflow numbers, dates, severities, or station ids. If a tool was not called, say you cannot answer.
 - If the user asks anything outside flood predictions / station history / gauge listings / database analytics, reply exactly: I can't answer that — I can only show flood predictions and station history.
 - Keep replies short. Always name station ids, dates, and severity labels returned by the tools.
@@ -56,6 +56,13 @@ Rules:
   returns an error, rewrite the SQL using the error message and retry.
 - For graphs of specific stations after an analytics query, call
   station_history per station.
+- For coverage questions (top-N across many stations, "all stations",
+  date windows with thin rows): FIRST run_sql to check which stations have
+  gauge_state rows in the window; if coverage is missing, sweep_stations for
+  the scope (it runs the model for each station AND saves to the database);
+  THEN run_sql again to rank the backfilled rows and station_history for the
+  winners' graphs. Never declare data missing until you have swept; never
+  invent flows.
 
 {schema}"""
 
@@ -147,6 +154,13 @@ def parse_intent(text: str) -> dict:
     wants_info = bool(re.search(r"list|stations|gauges|which|where|threshold|show.*gauge", lower))
     wants_top = bool(_TOP_RE.search(text or "") and re.search(r"flow|stream|flood|station|gauge", lower))
     wants_rp = bool(_RP_RE.search(text or ""))
+    wants_sweep = bool(re.search(
+        r"all stations|every station|state-?wide|entire (uttar pradesh|up|state)|"
+        r"across (uttar pradesh|up|the state)|\bsweep\b|backfill", lower)) \
+        and (wants_predict or wants_top)
+    if wants_sweep:
+        return {"kind": "sweep", "districts": districts, "station_id": station_id,
+                "days": _parse_days(text, 3), "top_n": 5}
     if wants_rp and wants_top:
         return {"kind": "sql_rp", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 3), "top_n": 5}
@@ -394,6 +408,15 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                 if c["station_id"] not in {x["station_id"] for x in charts}:
                     charts.append(c)
             return
+        if tool == "sweep_stations":
+            top = out.get("top", []) or []
+            _tables.append({
+                "columns": ["station_id", "district", "peak_flow", "peak_date", "severity"],
+                "rows": [{k: r.get(k, "") for k in
+                          ("station_id", "district", "peak_flow", "peak_date", "severity")}
+                         for r in top[:10]],
+            })
+            return
         if tool == "predict_district":
             for d in out.get("results", []):
                 briefings.append(d.get("briefing", ""))
@@ -494,6 +517,19 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
         elif intent["kind"] == "predict_station":
             _record("predict_station", {"station_id": intent["station_id"],
                                         "horizon_days": horizon_days})
+        elif intent["kind"] == "sweep":
+            scope = {"horizon_days": horizon_days}
+            if intent["districts"]:
+                scope["districts"] = intent["districts"][:2]
+            else:
+                scope["all_stations"] = True
+            swept = _record("sweep_stations", scope)
+            for row in (swept.get("top", []) or [])[:3]:
+                try:
+                    _record("station_history",
+                            {"station_id": int(row["station_id"]), "days": intent["days"]})
+                except (TypeError, ValueError, KeyError):
+                    continue
 
     errors = [t for t in trace if not t["ok"]]
     if not trace:

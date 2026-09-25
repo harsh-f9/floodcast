@@ -122,6 +122,42 @@ class TestChatRouter(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 503)
 
+    def test_job_submit_and_poll(self):
+        with patch("chat_agent.agent.llm_configured", return_value=False):
+            r = self.client.post(
+                "/api/chat/jobs",
+                json={"messages": [{"role": "user", "content": "hi"}]},
+            )
+        self.assertEqual(r.status_code, 202)
+        job_id = r.json()["job_id"]
+        self.assertTrue(job_id)
+        import time as _time
+
+        body = {}
+        for _ in range(30):
+            pr = self.client.get(f"/api/chat/jobs/{job_id}")
+            self.assertEqual(pr.status_code, 200)
+            body = pr.json()
+            if body["status"] in ("done", "failed"):
+                break
+            _time.sleep(0.5)
+        self.assertEqual(body["status"], "done")
+        self.assertIn("Predict", body["result"]["reply"])
+        self.assertIn("events", body)
+        self.assertEqual(body["progress_done"], 0)
+
+    def test_job_unknown_404(self):
+        r = self.client.get("/api/chat/jobs/does-not-exist")
+        self.assertEqual(r.status_code, 404)
+
+    def test_job_submit_kill_switch(self):
+        kill_switch.CHAT_ENABLED = False
+        r = self.client.post(
+            "/api/chat/jobs",
+            json={"messages": [{"role": "user", "content": "hi"}]},
+        )
+        self.assertEqual(r.status_code, 503)
+
     def test_validation_empty_messages(self):
         r = self.client.post("/api/chat", json={"messages": []})
         self.assertEqual(r.status_code, 422)
