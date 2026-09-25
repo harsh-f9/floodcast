@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send, X, Wrench } from "lucide-react";
+import { Bot, Download, Loader2, Send, X, Wrench } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import {
   ResponsiveContainer,
   LineChart,
@@ -36,13 +37,14 @@ interface Msg {
 
 const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
 
-const SEV_COLOR: Record<string, string> = {
-  NORMAL: "bg-emerald-500/15 text-emerald-300",
-  WATCH: "bg-blue-500/15 text-blue-300",
-  WARNING: "bg-amber-500/15 text-amber-300",
-  DANGER: "bg-orange-500/15 text-orange-300",
-  EXTREME: "bg-rose-500/15 text-rose-300",
-  UNKNOWN: "bg-gray-500/15 text-gray-300",
+// Black-and-white severity scale: light (calm) -> black (extreme).
+const SEV_STYLE: Record<string, string> = {
+  NORMAL: "bg-gray-100 text-gray-700 border-gray-200",
+  WATCH: "bg-gray-200 text-gray-800 border-gray-300",
+  WARNING: "bg-gray-300 text-black border-gray-400",
+  DANGER: "bg-black text-white border-black",
+  EXTREME: "bg-black text-white border-black ring-2 ring-gray-400",
+  UNKNOWN: "bg-white text-gray-500 border-gray-200",
 };
 
 function ChartCard({ c }: { c: ChartPayload }) {
@@ -53,36 +55,36 @@ function ChartCard({ c }: { c: ChartPayload }) {
   }));
   const t = c.thresholds || { watch: 0, warning: 0, danger: 0, extreme: 0 };
   return (
-    <div className="rounded-lg bg-white/[0.04] border border-white/10 p-2.5">
+    <div className="rounded-lg bg-white border border-gray-200 p-2.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <p className="text-xs font-semibold text-gray-100 truncate">
+        <p className="text-xs font-semibold text-black truncate">
           Stn {c.station_id}{c.district ? ` · ${c.district}` : ""}
         </p>
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${SEV_COLOR[c.severity] || SEV_COLOR.UNKNOWN}`}>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SEV_STYLE[c.severity] || SEV_STYLE.UNKNOWN}`}>
           {c.severity || "UNKNOWN"}
         </span>
       </div>
       {c.peak_flow != null && (
-        <p className="text-[11px] text-gray-400 mb-1.5">
+        <p className="text-[11px] text-gray-600 mb-1.5">
           Peak {c.peak_flow} m³/s on {c.peak_date}
         </p>
       )}
       <div className="h-[140px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff14" />
-            <XAxis dataKey="x" stroke="#94a3b8" fontSize={9} tickLine={false} interval="preserveStartEnd" />
-            <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+            <XAxis dataKey="x" stroke="#737373" fontSize={9} tickLine={false} interval="preserveStartEnd" />
+            <YAxis stroke="#737373" fontSize={9} tickLine={false} axisLine={false} />
             <ChartTooltip
-              contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #ffffff22", borderRadius: 8, color: "#fff", fontSize: 11 }}
+              contentStyle={{ backgroundColor: "#fff", border: "1px solid #d4d4d4", borderRadius: 8, color: "#000", fontSize: 11 }}
               formatter={(v: unknown) => [`${v} m³/s`, "Flow"]}
             />
-            {t.watch > 0 && <ReferenceLine y={t.watch} stroke="#60a5fa" strokeDasharray="3 3" strokeWidth={1} />}
-            {t.warning > 0 && <ReferenceLine y={t.warning} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth={1} />}
-            {t.danger > 0 && <ReferenceLine y={t.danger} stroke="#fb923c" strokeDasharray="3 3" strokeWidth={1} />}
-            {t.extreme > 0 && <ReferenceLine y={t.extreme} stroke="#fb7185" strokeDasharray="3 3" strokeWidth={1.5} />}
-            <Line type="monotone" dataKey="past" stroke="#94a3b8" strokeWidth={1.5} dot={false} connectNulls />
-            <Line type="monotone" dataKey="forecast" stroke="#818cf8" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            {t.watch > 0 && <ReferenceLine y={t.watch} stroke="#a3a3a3" strokeDasharray="3 3" strokeWidth={1} />}
+            {t.warning > 0 && <ReferenceLine y={t.warning} stroke="#737373" strokeDasharray="3 3" strokeWidth={1} />}
+            {t.danger > 0 && <ReferenceLine y={t.danger} stroke="#404040" strokeDasharray="3 3" strokeWidth={1} />}
+            {t.extreme > 0 && <ReferenceLine y={t.extreme} stroke="#000" strokeDasharray="3 3" strokeWidth={1.5} />}
+            <Line type="monotone" dataKey="past" stroke="#a3a3a3" strokeWidth={1.5} dot={false} connectNulls />
+            <Line type="monotone" dataKey="forecast" stroke="#000" strokeWidth={2} dot={{ r: 2 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -90,7 +92,39 @@ function ChartCard({ c }: { c: ChartPayload }) {
   );
 }
 
-export default function ChatSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+// Same quoting pattern as the dashboard's Master Predict CSV export.
+function exportMessageCsv(m: Msg, idx: number) {
+  const rows: string[][] = [
+    ["Station ID", "Station Name", "District", "Date", "Streamflow (m3/s)", "Kind", "Severity", "Peak Flow (m3/s)", "Peak Date"],
+  ];
+  (m.charts || []).forEach((c) => {
+    (c.chart || []).forEach((p) => {
+      rows.push([
+        String(c.station_id),
+        c.station_name || "",
+        c.district || "",
+        p.date,
+        p.streamflow == null ? "" : String(p.streamflow),
+        p.kind,
+        c.severity || "",
+        c.peak_flow == null ? "" : String(c.peak_flow),
+        c.peak_date || "",
+      ]);
+    });
+  });
+  if (rows.length === 1) rows.push(["Response", m.content]);
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    rows.map((e) => e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csvContent));
+  link.setAttribute("download", `Chat_Response_${idx + 1}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean; onClose?: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,9 +145,9 @@ export default function ChatSidebar({ open, onClose }: { open: boolean; onClose:
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs, loading, open]);
+  }, [msgs, loading]);
 
-  if (!open || !enabled) return null;
+  if (!enabled) return null;
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
@@ -146,36 +180,38 @@ export default function ChatSidebar({ open, onClose }: { open: boolean; onClose:
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-[400px] flex flex-col bg-[#0d1117] border-l border-white/10 shadow-2xl">
-      {/* Header (LibreChat-style) */}
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/10 bg-[#161b22]">
-        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-          <Bot className="w-4 h-4 text-indigo-300" />
+    <div className={embedded ? "flex flex-col h-full w-full bg-white" : "flex flex-col h-full w-full bg-white"}>
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-200 bg-black">
+        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+          <Bot className="w-4 h-4 text-black" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-100 leading-tight">Flood Assistant</p>
-          <p className="text-[11px] text-gray-500 truncate">
+          <p className="text-sm font-semibold text-white leading-tight">Flood Assistant</p>
+          <p className="text-[11px] text-gray-400 truncate">
             predictions + history only{model ? ` · ${model}` : ""}
           </p>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
-          <X className="w-4 h-4" />
-        </button>
+        {onClose && (
+          <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-3.5 py-4 flex flex-col gap-3 bg-white">
         {msgs.length === 0 && (
           <div className="text-center mt-6">
-            <Bot className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-400 mb-1">Ask for district forecasts or station history.</p>
-            <p className="text-xs text-gray-600 mb-4">I can't answer anything else.</p>
+            <Bot className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-700 mb-1">Ask for district forecasts or station history.</p>
+            <p className="text-xs text-gray-400 mb-4">I can't answer anything else.</p>
             <div className="flex flex-wrap gap-1.5 justify-center">
               {QUICK.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border border-white/15 text-gray-300 hover:bg-white/10 transition-colors"
+                  className="text-xs px-2.5 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   {q}
                 </button>
@@ -186,22 +222,37 @@ export default function ChatSidebar({ open, onClose }: { open: boolean; onClose:
         {msgs.map((m, i) => (
           <div key={i} className={`flex flex-col gap-1.5 ${m.role === "user" ? "items-end" : "items-start"}`}>
             <div
-              className={`max-w-[92%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
+              className={`max-w-[95%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed ${
                 m.role === "user"
-                  ? "bg-indigo-600 text-white rounded-br-md"
-                  : "bg-white/[0.06] text-gray-100 border border-white/10 rounded-bl-md"
+                  ? "bg-black text-white rounded-br-md"
+                  : "bg-gray-100 text-black border border-gray-200 rounded-bl-md"
               }`}
             >
-              {m.content}
+              {m.role === "assistant" ? (
+                <div className="[&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-0.5 [&_strong]:font-bold [&_code]:bg-gray-200 [&_code]:px-1 [&_code]:rounded [&_code]:text-[12px] [&_h1]:font-bold [&_h2]:font-bold [&_h3]:font-bold [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_a]:underline">
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                </div>
+              ) : (
+                <span className="whitespace-pre-wrap">{m.content}</span>
+              )}
             </div>
+            {m.role === "assistant" && (
+              <button
+                onClick={() => exportMessageCsv(m, i)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-black border border-gray-200 hover:border-black rounded-md px-2 py-1 transition-colors"
+                title="Export this response to CSV"
+              >
+                <Download className="w-3 h-3" /> Export CSV
+              </button>
+            )}
             {m.trace && m.trace.length > 0 && (
-              <details className="max-w-[92%] text-[11px] text-gray-500">
-                <summary className="cursor-pointer flex items-center gap-1 hover:text-gray-300">
+              <details className="max-w-[95%] text-[11px] text-gray-500">
+                <summary className="cursor-pointer flex items-center gap-1 hover:text-black">
                   <Wrench className="w-3 h-3" /> {m.trace.length} tool call{m.trace.length > 1 ? "s" : ""}
                 </summary>
-                <div className="mt-1 font-mono bg-black/30 rounded-md p-2 border border-white/5">
+                <div className="mt-1 font-mono bg-gray-50 rounded-md p-2 border border-gray-200">
                   {m.trace.map((t, j) => (
-                    <div key={j} className={t.ok ? "text-gray-400" : "text-rose-400"}>
+                    <div key={j} className={t.ok ? "text-gray-600" : "text-black font-bold"}>
                       {t.ok ? "✓" : "✗"} {t.tool} {JSON.stringify(t.args)}
                       {!t.ok && t.error ? ` — ${t.error}` : ""}
                     </div>
@@ -210,19 +261,16 @@ export default function ChatSidebar({ open, onClose }: { open: boolean; onClose:
               </details>
             )}
             {m.charts && m.charts.length > 0 && (
-              <div className="w-full flex flex-col gap-2">
-                {m.charts.slice(0, 6).map((c) => (
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {m.charts.map((c) => (
                   <ChartCard key={c.station_id} c={c} />
                 ))}
-                {m.charts.length > 6 && (
-                  <p className="text-[11px] text-gray-500">+ {m.charts.length - 6} more stations (see briefing).</p>
-                )}
               </div>
             )}
           </div>
         ))}
         {loading && (
-          <div className="flex items-center gap-2 text-gray-400 text-[13px]">
+          <div className="flex items-center gap-2 text-gray-500 text-[13px]">
             <Loader2 className="w-4 h-4 animate-spin" /> Running tools…
           </div>
         )}
@@ -230,20 +278,20 @@ export default function ChatSidebar({ open, onClose }: { open: boolean; onClose:
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-white/10 bg-[#161b22]">
-        <div className="flex items-center gap-2 rounded-xl bg-white/[0.05] border border-white/10 pl-3.5 pr-1.5 py-1.5 focus-within:border-indigo-500/60">
+      <div className="p-3 border-t border-gray-200 bg-white">
+        <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 pl-3.5 pr-1.5 py-1.5 focus-within:border-black">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder="Predict Bijnor…"
-            className="flex-1 bg-transparent outline-none text-sm text-gray-100 placeholder:text-gray-600"
+            className="flex-1 bg-transparent outline-none text-sm text-black placeholder:text-gray-400"
             maxLength={500}
           />
           <button
             onClick={() => send()}
             disabled={loading || !input.trim()}
-            className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-40 transition-colors"
             title="Send"
           >
             <Send className="w-4 h-4" />

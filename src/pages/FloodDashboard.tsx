@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Waves, RefreshCw, Loader2, MapPin, Target, Activity } from "lucide-react";
+import { ArrowLeft, Waves, RefreshCw, Loader2, MapPin, Target, Activity, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, subDays, addDays } from "date-fns";
 import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
@@ -11,6 +11,7 @@ import returnPeriodsData from "../data/gauge_return_periods.json";
 import enrichedGauges from "../data/gauge_locations_enriched.json";
 import { getApiUrl } from "@/lib/api";
 import { summarizeDistrict } from "@/lib/briefing";
+import ChatSidebar from "@/components/ChatSidebar";
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -168,6 +169,7 @@ export default function FloodDashboard() {
   const [masterPredictProgress, setMasterPredictProgress] = useState(0);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
+  const [chatMobileOpen, setChatMobileOpen] = useState(false);
 
   // Clear master predictions on district change
   useEffect(() => {
@@ -595,7 +597,8 @@ export default function FloodDashboard() {
 
   return (
     <div className="min-h-screen bg-[#eef7ff] py-8 px-4 animate-fade-in font-sans">
-      <div className="container mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 items-start">
+      <div className="w-full lg:w-[60%] min-w-0">
         <div className="flex items-center justify-between mb-6">
           <Link
             to="/projects"
@@ -657,7 +660,8 @@ export default function FloodDashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Narrowed to 60%: controls stack above results */}
+        <div className="grid grid-cols-1 gap-6">
           {/* LEFT COLUMN: Controls */}
           <div className="lg:col-span-1 flex flex-col gap-6">
             
@@ -1754,6 +1758,26 @@ export default function FloodDashboard() {
           </div>
         )}
       </div>
+
+      {/* Fixed 40% RHS chat panel (desktop): sticky full-height beside the dashboard */}
+      <aside className="hidden lg:flex w-[40%] shrink-0 lg:sticky lg:top-24 h-[calc(100vh-7rem)] bg-white border border-gray-200 rounded-2xl shadow-xl shadow-blue-900/5 overflow-hidden">
+        <ChatSidebar embedded />
+      </aside>
+
+      {/* Mobile: floating button + full-screen chat overlay */}
+      <button
+        onClick={() => setChatMobileOpen(true)}
+        title="Flood Assistant"
+        className="lg:hidden fixed bottom-5 right-5 z-[60] w-12 h-12 rounded-full bg-black text-white shadow-xl hover:bg-gray-800 transition-colors flex items-center justify-center"
+      >
+        <MessageCircle className="w-5 h-5" />
+      </button>
+      {chatMobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-[70] bg-white">
+          <ChatSidebar embedded onClose={() => setChatMobileOpen(false)} />
+        </div>
+      )}
+    </div>
     </div>
   );
 }
