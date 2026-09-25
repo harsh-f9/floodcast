@@ -10,6 +10,7 @@ The LLM never answers from knowledge: it must call a tool to say anything
 about flows, and L1 guarantees charts deploy even if the model chatters.
 """
 import json
+import logging
 import os
 import re
 import time
@@ -17,6 +18,7 @@ import time
 import httpx
 
 from . import district_map
+from .log import event
 from .schema import schema_prompt
 from .tools import (
     FALLBACK_REPLY,
@@ -43,8 +45,8 @@ FALLBACK_ATTEMPTS = 2
 
 SYSTEM_PROMPT = """You are the CRO Flood Assistant, a narrow tool for Uttar Pradesh flood streamflow.
 Rules:
-- You ONLY answer using the provided tools (predict_district, station_history,
-  district_stations, describe_tables, run_sql).
+- You ONLY answer using the provided tools (predict_district, predict_station,
+  station_history, district_stations, describe_tables, run_sql).
 - Never invent streamflow numbers, dates, severities, or station ids. If a tool was not called, say you cannot answer.
 - If the user asks anything outside flood predictions / station history / gauge listings / database analytics, reply exactly: I can't answer that — I can only show flood predictions and station history.
 - Keep replies short. Always name station ids, dates, and severity labels returned by the tools.
@@ -70,6 +72,31 @@ def summary_model_name() -> str:
 
 def fallback_model_name() -> str:
     return os.environ.get("OPENROUTER_FALLBACK_MODEL", FALLBACK_MODEL)
+
+
+def reasoning_effort() -> str:
+    """Reasoning effort for tool-loop calls (OPENROUTER_REASONING_EFFORT, default low, off to disable)."""
+    return os.environ.get("OPENROUTER_REASONING_EFFORT", "low").strip().lower()
+
+
+_REASONING_OK = True  # process-wide kill on first 400 that names reasoning
+
+
+def _extract_thinking(msg: dict) -> str:
+    """Displayable reasoning only: message.reasoning text plus text/summary
+    details. Encrypted/opaque parts are never shown."""
+    parts = []
+    if isinstance(msg.get("reasoning"), str) and msg["reasoning"].strip():
+        parts.append(msg["reasoning"].strip())
+    for d in msg.get("reasoning_details") or []:
+        if not isinstance(d, dict):
+            continue
+        dtype = str(d.get("type", ""))
+        if dtype.endswith("reasoning.text") and d.get("text"):
+            parts.append(str(d["text"]))
+        elif dtype.endswith("reasoning.summary") and d.get("summary"):
+            parts.append(str(d["summary"]))
+    return "\n".join(parts)[:2000]
 
 
 def llm_configured() -> bool:
@@ -128,6 +155,10 @@ def parse_intent(text: str) -> dict:
         top_n = max(1, min(int(n.group(1)) if n else 5, 10))
         return {"kind": "sql_top", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 3), "top_n": top_n}
+    if wants_predict and station_id is not None:
+        # A named station + forecast verbs = single-station model run.
+        return {"kind": "predict_station", "districts": districts, "station_id": station_id,
+                "days": 7, "top_n": 5}
     if wants_history and station_id is not None:
         return {"kind": "history", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 7), "top_n": 5}
@@ -151,7 +182,8 @@ def capability_reply() -> str:
     names = district_map.all_districts()
     return (
         "I can show flood predictions and station history. "
-        f"Try 'Predict Bijnor', 'History of station 0', or 'List stations in Lucknow'. "
+        f"Try 'Predict Bijnor', 'Forecast for station 92', 'History of station 0', "
+        f"'Top 5 stations by streamflow', or 'List stations in Lucknow'. "
         f"({len(names)} districts available.)"
     )
 
@@ -185,6 +217,8 @@ def _post_chat(messages: list, tools: list | None, model: str, max_tokens: int) 
     if rescue and rescue != model:
         candidates.append((rescue, FALLBACK_ATTEMPTS))
     last_err = "no attempt"
+    global _REASONING_OK
+    want_reasoning = bool(tools) and reasoning_effort() not in ("", "off") and _REASONING_OK
     for cand, tries in candidates:
         body = {
             "model": cand,
@@ -195,6 +229,8 @@ def _post_chat(messages: list, tools: list | None, model: str, max_tokens: int) 
         if tools:
             body["tools"] = tools
             body["tool_choice"] = "auto"
+        if want_reasoning:
+            body["reasoning"] = {"effort": reasoning_effort(), "exclude": False}
         for attempt in range(tries):
             try:
                 r = httpx.post(OPENROUTER_URL, headers=headers, json=body, timeout=LLM_TIMEOUT_S)
@@ -205,6 +241,17 @@ def _post_chat(messages: list, tools: list | None, model: str, max_tokens: int) 
                 if r.status_code == 404:
                     last_err = f"openrouter 404 on {cand}"
                     break  # slug gone — try next candidate, don't burn retries
+                if r.status_code == 400 and "reasoning" in body:
+                    try:
+                        err_text = r.text.lower()
+                    except Exception:
+                        err_text = ""
+                    if "reasoning" in err_text:
+                        _REASONING_OK = False
+                        del body["reasoning"]
+                        last_err = f"openrouter 400 (reasoning unsupported) on {cand}"
+                        event("llm.reasoning_disabled", model=cand, level=logging.WARNING)
+                        continue
                 r.raise_for_status()
                 if cand != model:
                     print(f"chat fallback served by {cand} (primary: {last_err})")
@@ -252,13 +299,37 @@ def _summarize(user_text: str, reply: str, charts: list, briefings: list) -> tup
     return reply, False, ""
 
 
-def run_agent(messages: list, horizon_days: int = 7) -> dict:
-    """Full loop. messages = [{role, content}] with last = current user query."""
+def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
+              on_event=None) -> dict:
+    """Full loop. messages = [{role, content}] with last = current user query.
+
+    on_event(evt) receives live step events for SSE streaming:
+    run_started/intent/round_start/thinking/tool_start/tool_end/
+    summary_start/summary_done/run_finished. Never raises.
+    """
+    if request_id:
+        from .log import bind as _bind
+
+        _bind(request_id)
+
+    def _emit(etype: str, **fields):
+        if on_event is None:
+            return
+        try:
+            on_event({"type": etype, **fields})
+        except Exception:
+            pass
+
     t0 = time.time()
     user_text = messages[-1]["content"] if messages else ""
+    event("chat.request", query=user_text[:300], history_n=len(messages),
+          horizon_days=horizon_days)
+    _emit("run_started", query=user_text[:300])
 
     # L0: scope gate — no LLM cost for random questions.
     if not in_scope(user_text):
+        event("chat.scope_reject", query=user_text[:200])
+        _emit("run_finished", status="refused")
         return {
             "reply": FALLBACK_REPLY, "raw_reply": FALLBACK_REPLY,
             "tool_trace": [], "charts": [],
@@ -267,6 +338,7 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
             "latency_s": 0.0,
         }
     if re.match(r"^\s*(hi|hello|hey|namaste|help)\s*[?.!]*\s*$", user_text, re.IGNORECASE):
+        _emit("run_finished", status="capabilities")
         return {
             "reply": capability_reply(), "raw_reply": capability_reply(),
             "tool_trace": [], "charts": [],
@@ -276,21 +348,40 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
         }
 
     intent = parse_intent(user_text)
+    event("chat.intent", kind=intent["kind"], districts=intent["districts"],
+          station_id=intent["station_id"], days=intent.get("days"),
+          top_n=intent.get("top_n"))
+    _emit("intent", kind=intent["kind"], districts=intent["districts"],
+          station_id=intent["station_id"])
     trace: list = []
     charts: list = []
     briefings: list = []
     _tables: list = []
+    _step_no = [0]
 
     def _record(tool: str, args: dict):
+        _step_no[0] += 1
+        step_id = f"s{_step_no[0]}"
+        _emit("tool_start", id=step_id, name=tool, args=args)
+        t_start = time.monotonic()
         try:
             out = run_tool(tool, args)
             ok = not (isinstance(out, dict) and out.get("ok") is False)
+            latency_ms = round((time.monotonic() - t_start) * 1000)
+            if not ok:
+                event("llm.repair", tool=tool, args=args, error=str(out.get("error", ""))[:300],
+                      level=logging.WARNING)
             trace.append({"tool": tool, "args": args, "ok": ok,
                           "error": "" if ok else str(out.get("error", ""))[:300]})
+            _emit("tool_end", id=step_id, name=tool, ok=ok, latency_ms=latency_ms,
+                  error="" if ok else str(out.get("error", ""))[:300])
             _collect(tool, out)
             return out
         except Exception as e:
+            latency_ms = round((time.monotonic() - t_start) * 1000)
             trace.append({"tool": tool, "args": args, "ok": False, "error": str(e)[:300]})
+            _emit("tool_end", id=step_id, name=tool, ok=False, latency_ms=latency_ms,
+                  error=str(e)[:300])
             return {"error": str(e)[:300]}
 
     def _collect(tool: str, out: dict):
@@ -317,6 +408,17 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
                         "peak_flow": s.get("peak_flow"),
                         "peak_date": s.get("peak_date", ""),
                     })
+        elif tool == "predict_station":
+            charts.append({
+                "station_id": out.get("station_id", -1),
+                "station_name": out.get("station_name", ""),
+                "district": out.get("district", ""),
+                "thresholds": out.get("thresholds", {}),
+                "chart": out.get("chart", []),
+                "severity": out.get("severity", ""),
+                "peak_flow": out.get("peak_flow"),
+                "peak_date": out.get("peak_date", ""),
+            })
         elif tool == "station_history":
             charts.append({
                 "station_id": out.get("station_id", -1),
@@ -337,10 +439,19 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
         convo = [{"role": "system", "content": SYSTEM_PROMPT}]
         convo += [{"role": m["role"], "content": m["content"]} for m in messages[-10:]]
         try:
-            for _ in range(MAX_TOOL_ROUNDS):
+            for round_no in range(MAX_TOOL_ROUNDS):
+                event("llm.request", round=round_no + 1, model=model_name(),
+                      convo_n=len(convo))
+                _emit("round_start", round=round_no + 1, model=model_name())
                 data, tool_model = _post_chat(convo, TOOL_SCHEMAS, model_name(), LLM_MAX_TOKENS)
                 msg = data["choices"][0]["message"]
                 calls = msg.get("tool_calls") or []
+                event("llm.response", round=round_no + 1, served=tool_model,
+                      content_len=len(msg.get("content") or ""),
+                      tool_calls=[c["function"]["name"] for c in calls])
+                thinking = _extract_thinking(msg)
+                if thinking:
+                    _emit("thinking", round=round_no + 1, text=thinking)
                 if msg.get("content"):
                     reply = msg["content"]
                 if not calls:
@@ -380,6 +491,9 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
                     continue
         elif intent["kind"] == "sql_rp":
             _record("run_sql", {"sql": CANNED_MAX_RP})
+        elif intent["kind"] == "predict_station":
+            _record("predict_station", {"station_id": intent["station_id"],
+                                        "horizon_days": horizon_days})
 
     errors = [t for t in trace if not t["ok"]]
     if not trace:
@@ -393,8 +507,20 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
     # with visual citations. Failover keeps the raw tool-grounded reply.
     raw_reply, summary_used, summary_model = reply, False, ""
     if trace and any(t["ok"] for t in trace) and llm_configured():
+        event("summary.request", model=summary_model_name(),
+              reply_len=len(reply), charts_n=len(charts))
+        _emit("summary_start", model=summary_model_name())
         reply, summary_used, summary_model = _summarize(user_text, reply, charts, briefings)
+        event("summary.done", used=summary_used, served=summary_model,
+              out_len=len(reply))
+        _emit("summary_done", used=summary_used, served=summary_model)
 
+    latency = round(time.time() - t0, 2)
+    event("chat.response", reply_len=len(reply), charts_n=len(charts),
+          tools_n=len(trace), llm_used=llm_used, tool_model=tool_model,
+          summary_used=summary_used, summary_model=summary_model,
+          latency_s=latency)
+    _emit("run_finished", status="ok", charts_n=len(charts), tools_n=len(trace))
     return {
         "reply": reply,
         "raw_reply": raw_reply,
@@ -405,7 +531,7 @@ def run_agent(messages: list, horizon_days: int = 7) -> dict:
         "llm_used": llm_used,
         "summary_used": summary_used,
         "summary_model": summary_model,
-        "latency_s": round(time.time() - t0, 2),
+        "latency_s": latency,
     }
 
 

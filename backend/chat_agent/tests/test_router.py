@@ -54,6 +54,22 @@ class TestChatRouter(unittest.TestCase):
         self.assertEqual(len(body["charts"]), 1)
         self.assertTrue(body["charts"][0]["chart"])
 
+    def test_request_id_returned_and_logged(self):
+        with patch("chat_agent.agent.llm_configured", return_value=False):
+            with self.assertLogs("chat_agent", level="INFO") as cm:
+                r = self.client.post(
+                    "/api/chat",
+                    json={"messages": [{"role": "user", "content": "history of station 0"}]},
+                )
+        body = r.json()
+        self.assertEqual(r.status_code, 200)
+        rid = body.get("request_id", "")
+        self.assertTrue(rid)
+        blob = "\n".join(cm.output)
+        self.assertIn(rid, blob)
+        self.assertIn("tool.done", blob)
+        self.assertIn("chat.response", blob)
+
     def test_top5_end_to_end_no_key(self):
         with patch("chat_agent.agent.llm_configured", return_value=False):
             r = self.client.post(
@@ -71,6 +87,40 @@ class TestChatRouter(unittest.TestCase):
         self.assertEqual(r.status_code, 503)
         r = self.client.get("/api/chat/status")
         self.assertFalse(r.json()["enabled"])
+
+    def test_stream_endpoint_frames(self):
+        import json as _json
+
+        with patch("chat_agent.agent.llm_configured", return_value=False):
+            r = self.client.post(
+                "/api/chat/stream",
+                json={"messages": [{"role": "user", "content": "history of station 0"}]},
+            )
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/event-stream", r.headers["content-type"])
+        frames = []
+        for chunk in r.text.split("\n\n"):
+            for line in chunk.split("\n"):
+                if line.startswith("data:"):
+                    try:
+                        frames.append(_json.loads(line[5:]))
+                    except Exception:
+                        pass
+        kinds = [f.get("type") for f in frames]
+        self.assertIn("run_started", kinds)
+        self.assertIn("tool_start", kinds)
+        self.assertIn("tool_end", kinds)
+        self.assertIn("run_finished", kinds)
+        result = next(f for f in frames if f.get("type") == "result")
+        self.assertEqual(len(result["result"]["charts"]), 1)
+
+    def test_stream_kill_switch(self):
+        kill_switch.CHAT_ENABLED = False
+        r = self.client.post(
+            "/api/chat/stream",
+            json={"messages": [{"role": "user", "content": "hi"}]},
+        )
+        self.assertEqual(r.status_code, 503)
 
     def test_validation_empty_messages(self):
         r = self.client.post("/api/chat", json={"messages": []})

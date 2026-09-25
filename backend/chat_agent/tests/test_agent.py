@@ -55,6 +55,21 @@ class TestIntentParse(unittest.TestCase):
         i = agent.parse_intent("which station has highest rp")
         self.assertEqual(i["kind"], "sql_rp")
 
+    def test_predict_station_routes_to_model(self):
+        i = agent.parse_intent("forecast for station 92")
+        self.assertEqual(i["kind"], "predict_station")
+        self.assertEqual(i["station_id"], 92)
+
+    def test_history_station_stays_history(self):
+        i = agent.parse_intent("history of station 92")
+        self.assertEqual(i["kind"], "history")
+        self.assertEqual(i["station_id"], 92)
+
+    def test_predict_district_unaffected(self):
+        i = agent.parse_intent("predict Agra")
+        self.assertEqual(i["kind"], "predict")
+        self.assertIn("Agra", i["districts"])
+
     def test_none(self):
         i = agent.parse_intent("flood")
         self.assertEqual(i["kind"], "none")
@@ -365,6 +380,77 @@ class TestPaidRescue(unittest.TestCase):
                 agent._post_chat([{"role": "user", "content": "x"}], None, agent.model_name(), 10)
         self.assertEqual(post.call_count,
                          agent.PRIMARY_ATTEMPTS + agent.FALLBACK_ATTEMPTS)
+
+
+class TestThinkingAndEvents(unittest.TestCase):
+    def test_extract_thinking(self):
+        msg = {
+            "reasoning": "  plan: check db first  ",
+            "reasoning_details": [
+                {"type": "reasoning.text", "text": "detail text"},
+                {"type": "reasoning.summary", "summary": "short sum"},
+                {"type": "reasoning.encrypted", "data": "SECRET"},
+            ],
+        }
+        text = agent._extract_thinking(msg)
+        self.assertIn("plan: check db first", text)
+        self.assertIn("detail text", text)
+        self.assertIn("short sum", text)
+        self.assertNotIn("SECRET", text)
+
+    def test_extract_thinking_empty(self):
+        self.assertEqual(agent._extract_thinking({}), "")
+        self.assertEqual(agent._extract_thinking({"reasoning_details": [{"type": "other"}]}), "")
+
+    def test_event_order_no_key(self):
+        seen = []
+        with patch.object(agent, "llm_configured", return_value=False):
+            out = agent.run_agent(
+                [{"role": "user", "content": "history of station 0"}],
+                on_event=seen.append,
+            )
+        kinds = [e["type"] for e in seen]
+        self.assertEqual(kinds[0], "run_started")
+        self.assertIn("intent", kinds)
+        self.assertIn("tool_start", kinds)
+        self.assertIn("tool_end", kinds)
+        self.assertEqual(kinds[-1], "run_finished")
+        start = next(e for e in seen if e["type"] == "tool_start")
+        end = next(e for e in seen if e["type"] == "tool_end")
+        self.assertEqual(start["id"], end["id"])
+        self.assertEqual(start["name"], "station_history")
+        self.assertTrue(end["ok"])
+        self.assertEqual(len(out["charts"]), 1)
+
+    def test_reasoning_400_disables_globally(self):
+        import copy
+        import httpx
+        prev = agent._REASONING_OK
+        agent._REASONING_OK = True
+        try:
+            ok_resp = httpx.Response(
+                200, json={"choices": [{"message": {"content": "done", "tool_calls": []}}]},
+                request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"))
+            bad_resp = httpx.Response(
+                400, json={"error": {"message": "reasoning.effort not supported"}},
+                request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"))
+            sent = []
+
+            def _fake_post(*a, **k):
+                sent.append(copy.deepcopy(k["json"]))
+                return [bad_resp, ok_resp][len(sent) - 1]
+
+            with patch("time.sleep"), patch("httpx.post", side_effect=_fake_post) as post:
+                data, served = agent._post_chat(
+                    [{"role": "user", "content": "x"}], [{"type": "function", "function": {"name": "t"}}],
+                    agent.model_name(), 10)
+            self.assertEqual(data["choices"][0]["message"]["content"], "done")
+            self.assertFalse(agent._REASONING_OK)
+            self.assertEqual(post.call_count, 2)
+            self.assertIn("reasoning", sent[0])
+            self.assertNotIn("reasoning", sent[1])
+        finally:
+            agent._REASONING_OK = prev
 
 
 if __name__ == "__main__":

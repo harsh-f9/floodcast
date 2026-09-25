@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Download, Loader2, Send, X, Wrench } from "lucide-react";
+import { Bot, Check, Download, Loader2, Send, X, Wrench } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
   ResponsiveContainer,
@@ -28,11 +28,24 @@ interface ChartPayload {
   peak_flow?: number;
   peak_date?: string;
 }
+interface Step {
+  id: string;
+  kind: "thinking" | "tool";
+  name?: string;
+  text?: string;
+  args?: Record<string, unknown>;
+  ok?: boolean;
+  latencyMs?: number;
+  error?: string;
+  running: boolean;
+}
 interface Msg {
   role: "user" | "assistant";
   content: string;
   charts?: ChartPayload[];
   trace?: { tool: string; args: Record<string, unknown>; ok: boolean; error: string }[];
+  steps?: Step[];
+  running?: boolean;
 }
 
 const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
@@ -46,6 +59,47 @@ const SEV_STYLE: Record<string, string> = {
   EXTREME: "bg-black text-white border-black ring-2 ring-gray-400",
   UNKNOWN: "bg-white text-gray-500 border-gray-200",
 };
+
+function StepRow({ s }: { s: Step }) {
+  if (s.kind === "thinking") {
+    return (
+      <details className="text-[11px] text-gray-500" open={s.running}>
+        <summary className="cursor-pointer flex items-center gap-1.5 hover:text-black list-none">
+          {s.running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          <span className="italic">Thinking{s.running ? "…" : ""}</span>
+        </summary>
+        {s.text && <p className="mt-1 pl-4 whitespace-pre-wrap border-l-2 border-gray-200">{s.text}</p>}
+      </details>
+    );
+  }
+  return (
+    <div className="text-[11px]">
+      <div className="flex items-center gap-1.5 text-gray-700">
+        {s.running ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : s.ok ? (
+          <Check className="w-3 h-3 text-black" />
+        ) : (
+          <X className="w-3 h-3 text-black" />
+        )}
+        <span className="font-mono font-semibold">{s.name}</span>
+        {!s.running && s.latencyMs != null && <span className="text-gray-400">{s.latencyMs}ms</span>}
+        {!s.running && !s.ok && <span className="font-bold">failed</span>}
+      </div>
+      {(s.args && Object.keys(s.args).length > 0) || s.error ? (
+        <details className="mt-0.5 pl-4 text-gray-500">
+          <summary className="cursor-pointer hover:text-black">details</summary>
+          {s.args && Object.keys(s.args).length > 0 && (
+            <pre className="mt-1 font-mono bg-gray-50 rounded p-1.5 border border-gray-200 overflow-x-auto">
+              {JSON.stringify(s.args, null, 1).slice(0, 800)}
+            </pre>
+          )}
+          {s.error && <p className="mt-1 font-semibold text-black">{s.error}</p>}
+        </details>
+      ) : null}
+    </div>
+  );
+}
 
 function ChartCard({ c }: { c: ChartPayload }) {
   const data = (c.chart || []).map((r) => ({
@@ -149,6 +203,27 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
 
   if (!enabled) return null;
 
+  const patchMsg = (idx: number, fn: (m: Msg) => Msg) =>
+    setMsgs((p) => p.map((m, j) => (j === idx ? fn(m) : m)));
+
+  const sendSync = async (history: { role: string; content: string }[], idx: number) => {
+    // Non-streaming fallback (also the path when SSE is unavailable).
+    const res = await fetch(getApiUrl("/api/chat"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history, horizon_days: 7 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail || "Request failed");
+    patchMsg(idx, (m) => ({
+      ...m,
+      content: data.reply,
+      charts: data.charts || [],
+      trace: data.tool_trace || [],
+      running: false,
+    }));
+  };
+
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -156,24 +231,101 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
     setMsgs(next);
     setInput("");
     setLoading(true);
+    const history = next
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role, content: m.content }));
+    const idx = next.length; // assistant placeholder position
+    setMsgs((p) => [...p, { role: "assistant", content: "", steps: [], running: true }]);
     try {
-      const history = next
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }));
-      const res = await fetch(getApiUrl("/api/chat"), {
+      const res = await fetch(getApiUrl("/api/chat/stream"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({ messages: history, horizon_days: 7 }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || "Request failed");
-      setMsgs((p) => [
-        ...p,
-        { role: "assistant", content: data.reply, charts: data.charts || [], trace: data.tool_trace || [] },
-      ]);
+      if (!res.ok || !res.body) throw new Error("stream unavailable");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let gotFrame = false;
+      const applyEvent = (evt: any) => {
+        gotFrame = true;
+        switch (evt.type) {
+          case "thinking":
+            patchMsg(idx, (m) => ({
+              ...m,
+              steps: [...(m.steps || []), { id: `t${(m.steps || []).length}`, kind: "thinking", text: evt.text, running: false }],
+            }));
+            break;
+          case "tool_start":
+            patchMsg(idx, (m) => ({
+              ...m,
+              steps: [...(m.steps || []), { id: evt.id, kind: "tool", name: evt.name, args: evt.args, running: true }],
+            }));
+            break;
+          case "tool_end":
+            patchMsg(idx, (m) => ({
+              ...m,
+              steps: (m.steps || []).map((s) =>
+                s.id === evt.id ? { ...s, running: false, ok: evt.ok, latencyMs: evt.latency_ms, error: evt.error || undefined } : s
+              ),
+            }));
+            break;
+          case "summary_start":
+            patchMsg(idx, (m) => ({
+              ...m,
+              steps: [...(m.steps || []), { id: "summary", kind: "thinking", text: "Summarizing results…", running: true }],
+            }));
+            break;
+          case "summary_done":
+            patchMsg(idx, (m) => ({
+              ...m,
+              steps: (m.steps || []).map((s) => (s.id === "summary" ? { ...s, running: false, text: undefined } : s)),
+            }));
+            break;
+          case "result": {
+            const r = evt.result || {};
+            patchMsg(idx, (m) => ({
+              ...m,
+              content: r.reply || "",
+              charts: r.charts || [],
+              trace: r.tool_trace || [],
+              running: false,
+            }));
+            break;
+          }
+          case "run_error":
+            patchMsg(idx, (m) => ({ ...m, content: `Error: ${evt.error || "request failed"}`, running: false }));
+            break;
+          default:
+            break;
+        }
+      };
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() || "";
+        for (const part of parts) {
+          const line = part.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          try {
+            const evt = JSON.parse(line.slice(5));
+            if (evt.type === "stream_end") continue;
+            applyEvent(evt);
+          } catch {
+            /* partial frame, ignore */
+          }
+        }
+      }
+      if (!gotFrame) await sendSync(history, idx);
     } catch (e) {
-      setMsgs((p) => [...p, { role: "assistant", content: `Error: ${(e as Error).message}` }]);
+      try {
+        await sendSync(history, idx);
+      } catch (e2) {
+        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false }));
+      }
     } finally {
       setLoading(false);
     }
@@ -221,6 +373,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
         )}
         {msgs.map((m, i) => (
           <div key={i} className={`flex flex-col gap-1.5 ${m.role === "user" ? "items-end" : "items-start"}`}>
+            {(m.content || m.role === "user") && (
             <div
               className={`max-w-[95%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed ${
                 m.role === "user"
@@ -236,6 +389,14 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
                 <span className="whitespace-pre-wrap">{m.content}</span>
               )}
             </div>
+            )}
+            {m.role === "assistant" && m.steps && m.steps.length > 0 && (
+              <div className="w-full max-w-[95%] flex flex-col gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-2">
+                {m.steps.map((s) => (
+                  <StepRow key={s.id} s={s} />
+                ))}
+              </div>
+            )}
             {m.role === "assistant" && (
               <button
                 onClick={() => exportMessageCsv(m, i)}

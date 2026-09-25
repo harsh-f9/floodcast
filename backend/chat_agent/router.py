@@ -5,6 +5,7 @@ reports enabled=false (the frontend hides the sidebar from that flag).
 """
 import logging
 import time
+import uuid
 
 try:
     from fastapi import APIRouter, HTTPException
@@ -17,6 +18,7 @@ except Exception:
 if _HAS_FASTAPI:
     from .agent import llm_configured, model_name, run_agent
     from .kill_switch import is_enabled
+    from .log import bind as _bind_log
     from .schemas import ChatRequest, ChatResponse, StatusResponse, ToolTrace
     from . import district_map
 
@@ -32,10 +34,74 @@ if _HAS_FASTAPI:
             "districts": len(district_map.all_districts()),
         }
 
+    @router.post("/api/chat/stream")
+    def chat_stream(req: ChatRequest):
+        """Live agentic timeline over SSE: run_started/intent/round_start/
+        thinking/tool_start/tool_end/summary_*/run_finished|run_error frames,
+        then a final result frame with the full ChatResponse payload."""
+        import json as _json
+        import queue as _queue
+        import threading as _threading
+        from fastapi.responses import StreamingResponse
+
+        if not is_enabled():
+            raise HTTPException(status_code=503, detail="Chat agent is disabled.")
+        rid = uuid.uuid4().hex[:8]
+        q: _queue.Queue = _queue.Queue()
+        _DONE = object()
+
+        def _worker():
+            _bind_log(rid)
+            try:
+                out = run_agent(
+                    [{"role": m.role, "content": m.content} for m in req.messages],
+                    horizon_days=req.horizon_days,
+                    request_id=rid,
+                    on_event=q.put,
+                )
+                q.put({"type": "result", "result": {
+                    "request_id": rid,
+                    "reply": out["reply"],
+                    "raw_reply": out.get("raw_reply", ""),
+                    "tool_trace": out.get("tool_trace", []),
+                    "charts": out.get("charts", []),
+                    "briefing": out.get("briefing"),
+                    "model": out.get("model", ""),
+                    "llm_used": out.get("llm_used", False),
+                    "summary_used": out.get("summary_used", False),
+                    "summary_model": out.get("summary_model", ""),
+                }})
+            except Exception as e:  # never leak tracebacks to the client
+                log.exception("chat stream run failed")
+                q.put({"type": "run_error", "error": "Chat run failed. Try again."})
+            finally:
+                q.put(_DONE)
+
+        async def _gen():
+            import anyio as _anyio
+
+            _threading.Thread(target=_worker, daemon=True,
+                              name=f"ChatStream-{rid}").start()
+            while True:
+                try:
+                    evt = await _anyio.to_thread.run_sync(q.get, cancellable=True)
+                except Exception:
+                    break
+                if evt is _DONE:
+                    break
+                yield f"data: {_json.dumps(evt, default=str)}\n\n"
+            yield "data: {\"type\": \"stream_end\"}\n\n"
+
+        return StreamingResponse(_gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache",
+                                          "X-Accel-Buffering": "no"})
+
     @router.post("/api/chat", response_model=ChatResponse)
     def chat(req: ChatRequest):
         if not is_enabled():
             raise HTTPException(status_code=503, detail="Chat agent is disabled.")
+        rid = uuid.uuid4().hex[:8]
+        _bind_log(rid)
         t0 = time.time()
         try:
             out = run_agent(
@@ -53,6 +119,7 @@ if _HAS_FASTAPI:
             len(out.get("charts", [])), time.time() - t0,
         )
         return {
+            "request_id": rid,
             "reply": out["reply"],
             "raw_reply": out.get("raw_reply", ""),
             "tool_trace": [ToolTrace(**t).model_dump() for t in out.get("tool_trace", [])],
