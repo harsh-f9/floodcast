@@ -239,13 +239,16 @@ def anchor_from_floor_file(db) -> dict:
     return {"status": "anchored-floor", "date": iso, "stations": n}
 
 
-def anchor_db_for_yesterday(lookback: int = 7) -> dict:
-    """Startup helper: fill gauge_state for latest-published date (default yesterday IST).
+def anchor_db_for_yesterday(lookback: int = 7, boot_light: bool = True) -> dict:
+    """Startup helper: guarantee the DB anchor is never stale (floor 2026-09-22).
 
-    Idempotent: skips download when DB already has a fresh anchor; skips insert when
-    the resolved date is already fully present. Safe to run on every boot (laptop or
-    Render). All heavy imports lazy. Returns status dict, never raises past RuntimeError
-    for missing CDS credentials (caller logs and continues boot).
+    Boot path (boot_light=True, used by the Render/laptop startup thread): if the DB
+    already holds any anchor at/above the floor, return immediately WITHOUT importing
+    xarray/eccodes or touching CDS — free-tier boots have ~512MB and the GRIB stack
+    plus torch can OOM the worker. Only July/empty DBs take the full CDS path.
+    Latest-published chasing stays available via CLI (`baseflow_glofas` default) and
+    scheduled laptop runs, which is also where CDS credentials live.
+    Returns status dict, never raises past RuntimeError (caller logs and continues boot).
     """
     target = get_target_date(None)
     try:
@@ -255,6 +258,8 @@ def anchor_db_for_yesterday(lookback: int = 7) -> dict:
     try:
         row = db.query_one("SELECT MAX(date) AS d FROM gauge_state")
         if row and row["d"] and row["d"] >= target.isoformat():
+            return {"status": "present", "date": row["d"]}
+        if boot_light and row and row["d"] and row["d"] >= MIN_ANCHOR.isoformat():
             return {"status": "present", "date": row["d"]}
     except Exception:
         pass  # empty/unreadable DB: proceed to anchor
