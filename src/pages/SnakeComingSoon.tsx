@@ -495,7 +495,7 @@ export default function SnakeComingSoon() {
           data-testid="apple"
           className="absolute left-0 top-0"
           style={{
-            transform: `translate3d(${((apple.x + 0.5) * cell).toFixed(1)}px, ${((apple.y + 0.5) * cell).toFixed(1)}px, 0)`,
+            transform: `translate3d(${((apple.x + 0.5) * cell).toFixed(1)}px, ${((apple.y + 0.5) * cell).toFixed(1)}px, 0) translate(-50%, -50%)`,
             width: cell,
             height: cell,
           }}
