@@ -86,7 +86,7 @@ def upload_actuals(input_path=None):
     else:
         station_data = load_long_csv(path)
         
-    print(f"\n[Push] Pushing actual streamflow data to {BACKEND_URL}...")
+    print(f"\n[Push] Pushing actual streamflow data to {backend}...")
     try:
         res = requests.post(f"{backend}/api/admin/sync-streamflow", json={
             "station_data": station_data
