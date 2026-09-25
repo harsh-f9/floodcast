@@ -39,6 +39,17 @@ try:
 except Exception as e:
     print(f"Alerts router not mounted (log-only mode): {e}")
 
+try:
+    try:
+        from chat_agent.router import router as chat_router
+    except ImportError:
+        from backend.chat_agent.router import router as chat_router
+    if chat_router is not None:
+        app.include_router(chat_router)
+        print("Chat agent mounted at /api/chat (kill switch: backend/chat_agent/kill_switch.py).")
+except Exception as e:
+    print(f"Chat agent not mounted: {e}")
+
 
 @app.on_event("startup")
 def startup():
