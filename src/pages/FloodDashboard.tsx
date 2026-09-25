@@ -612,7 +612,7 @@ export default function FloodDashboard() {
             <Waves className="w-12 h-12 text-[#0a3d62]" />
             <div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#0a3d62]">
-                Flood Risk Dashboard
+                Floodcast Dashboard
               </h1>
               <p className="text-gray-600 mt-1">Real-time Streamflow Prediction Model</p>
             </div>

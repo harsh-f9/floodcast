@@ -13,6 +13,7 @@ import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 import Insights from "./pages/Insights";
 import ProjectDetail from "./pages/ProjectDetail";
+import SnakeComingSoon from "./pages/SnakeComingSoon";
 import HeatwaveDashboard from "./pages/HeatwaveDashboard";
 import FloodDashboard from "./pages/FloodDashboard";
 
@@ -50,6 +51,10 @@ const App = () => {
           <Route
             path="/projects/flood-risk"
             element={<FloodDashboard />}
+          />
+          <Route
+            path="/projects/snakebite-prediction"
+            element={<SnakeComingSoon />}
           />
           <Route
             path="/projects/:slug"
