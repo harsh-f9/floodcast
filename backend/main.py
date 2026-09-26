@@ -127,6 +127,14 @@ def shutdown():
         stop_scheduler()
     except Exception:
         pass
+    try:
+        try:
+            from chat_agent.jobs import shutdown as _shutdown_jobs
+        except ImportError:
+            from backend.chat_agent.jobs import shutdown as _shutdown_jobs
+        _shutdown_jobs()
+    except Exception:
+        pass
 
 # Setup CORS for Vite
 app.add_middleware(

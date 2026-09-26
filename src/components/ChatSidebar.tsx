@@ -45,6 +45,7 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
   charts?: ChartPayload[];
+  briefing?: string;
   trace?: { tool: string; args: Record<string, unknown>; ok: boolean; error: string }[];
   steps?: Step[];
   running?: boolean;
@@ -114,7 +115,7 @@ function StepRow({ s }: { s: Step }) {
 function ChartCard({ c }: { c: ChartPayload }) {
   const unit = c.unit || "m³/s";
   const data = (c.chart || []).map((r) => ({
-    x: r.date.slice(5),
+    x: (r.date || "").slice(5),
     past: r.kind === "past" ? r.streamflow : null,
     forecast: r.kind === "forecast" ? r.streamflow : null,
   }));
@@ -166,7 +167,7 @@ function exportMessageCsv(m: Msg, idx: number) {
   (m.charts || []).forEach((c) => {
     (c.chart || []).forEach((p) => {
       rows.push([
-        String(c.station_id),
+        c.station_id === -1 ? "" : String(c.station_id),
         c.label || c.station_name || "",
         c.district || "",
         p.date,
@@ -225,18 +226,24 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
     setMsgs((p) => p.map((m, j) => (j === idx ? fn(m) : m)));
 
   const sendSync = async (history: { role: string; content: string }[], idx: number) => {
-    // Non-streaming fallback (also the path when SSE is unavailable).
+    // Non-streaming fallback (also the path when jobs are unavailable).
     const res = await fetch(getApiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: history, horizon_days: 7 }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.detail || "Request failed");
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(`Request failed (HTTP ${res.status})`);
+    }
+    if (!res.ok) throw new Error(data?.detail || `Request failed (HTTP ${res.status})`);
     patchMsg(idx, (m) => ({
       ...m,
       content: data.reply,
       charts: data.charts || [],
+      briefing: data.briefing || undefined,
       trace: data.tool_trace || [],
       running: false,
     }));
@@ -301,6 +308,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       if (!sub.ok) throw new Error("jobs unavailable");
       const { job_id } = await sub.json();
       let fails = 0;
+      const deadline = Date.now() + 10 * 60 * 1000;
       for (;;) {
         await sleep(1500);
         let st: any;
@@ -324,22 +332,38 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
             ...m,
             content: r.reply || "",
             charts: r.charts || [],
+            briefing: r.briefing || undefined,
             trace: r.tool_trace || [],
             running: false,
             progress: undefined,
           }));
           break;
         }
-        if (st.status === "failed") {
-          patchMsg(idx, (m) => ({ ...m, content: `Error: ${st.error || "job failed"}`, running: false, progress: undefined }));
+        if (st.status === "failed" || st.status === "cancelled") {
+          patchMsg(idx, (m) => ({ ...m, content: `Error: ${st.error || `job ${st.status}`}`, running: false, progress: undefined }));
+          break;
+        }
+        if (Date.now() > deadline) {
+          patchMsg(idx, (m) => ({
+            ...m,
+            content: `${m.content ? m.content + "\n\n" : ""}Still running in the background (job ${job_id}) — it keeps its progress; ask again later for the result.`,
+            running: false,
+            progress: undefined,
+          }));
           break;
         }
       }
     } catch (e) {
-      try {
-        await sendSync(history, idx);
-      } catch (e2) {
-        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false, progress: undefined }));
+      // Sync fallback ONLY when the job never started (submit failed).
+      // Never re-run after a successful submit: the job keeps running.
+      if ((e as Error).message === "jobs unavailable") {
+        try {
+          await sendSync(history, idx);
+        } catch (e2) {
+          patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false, progress: undefined }));
+        }
+      } else {
+        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e as Error).message}`, running: false, progress: undefined }));
       }
     } finally {
       setLoading(false);
@@ -449,10 +473,16 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
                 </div>
               </details>
             )}
+            {m.briefing && (
+              <div className="w-full max-w-[95%] rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">District briefing</p>
+                <p className="text-[12px] leading-relaxed text-black">{m.briefing}</p>
+              </div>
+            )}
             {m.charts && m.charts.length > 0 && (
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {m.charts.map((c) => (
-                  <ChartCard key={`${c.station_id}-${c.label || c.district || ""}`} c={c} />
+                {m.charts.map((c, j) => (
+                  <ChartCard key={`${c.station_id}-${c.label || c.district || ""}-${j}`} c={c} />
                 ))}
               </div>
             )}

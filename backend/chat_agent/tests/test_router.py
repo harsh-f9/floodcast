@@ -122,6 +122,19 @@ class TestChatRouter(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 503)
 
+    def test_stream_concurrency_cap(self):
+        import chat_agent.router as _router
+
+        _router._stream_inflight[0] = _router._STREAM_MAX
+        try:
+            r = self.client.post(
+                "/api/chat/stream",
+                json={"messages": [{"role": "user", "content": "hi"}]},
+            )
+        finally:
+            _router._stream_inflight[0] = 0
+        self.assertEqual(r.status_code, 429)
+
     def test_job_submit_and_poll(self):
         with patch("chat_agent.agent.llm_configured", return_value=False):
             r = self.client.post(
@@ -149,6 +162,39 @@ class TestChatRouter(unittest.TestCase):
     def test_job_unknown_404(self):
         r = self.client.get("/api/chat/jobs/does-not-exist")
         self.assertEqual(r.status_code, 404)
+
+    def test_job_cancel_endpoint(self):
+        from chat_agent import jobs as _jobs
+
+        _jobs.init_table()
+        conn = _jobs._conn()
+        try:
+            conn.execute("INSERT OR REPLACE INTO chat_jobs (id, status) VALUES ('cancel-ep', 'queued')")
+            conn.commit()
+        finally:
+            conn.close()
+        r = self.client.delete("/api/chat/jobs/cancel-ep")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["status"], "cancelled")
+        r = self.client.delete("/api/chat/jobs/does-not-exist")
+        self.assertEqual(r.status_code, 404)
+        conn = _jobs._conn()
+        try:
+            conn.execute("DELETE FROM chat_jobs WHERE id = 'cancel-ep'")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_job_submit_queue_full_429(self):
+        from chat_agent import jobs as _jobs
+
+        with patch.object(_jobs, "submit", side_effect=_jobs.QueueFullError("full")):
+            r = self.client.post(
+                "/api/chat/jobs",
+                json={"messages": [{"role": "user", "content": "hi"}]},
+            )
+        self.assertEqual(r.status_code, 429)
+        self.assertTrue(r.json()["detail"]["suggest_jobs"])
 
     def test_job_submit_kill_switch(self):
         kill_switch.CHAT_ENABLED = False

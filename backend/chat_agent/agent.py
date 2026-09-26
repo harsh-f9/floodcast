@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import time
+from datetime import date
 
 import httpx
 
@@ -30,6 +31,7 @@ from .tools import (
     predict_district,
     run_tool,
     station_history,
+    today_ist,
 )
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -63,6 +65,9 @@ Rules:
   THEN run_sql again to rank the backfilled rows and station_history for the
   winners' graphs. Never declare data missing until you have swept; never
   invent flows.
+- Every predict_district / predict_station / sweep_stations call SAVES its
+  future trajectory rows into gauge_state — tell the user which dates were
+  saved per station.
 - For district rainfall questions use district_rainfall (daily averages across
   the district's gauges). Rainfall history is OBSERVED data, not a forecast.
 - The agent is not read-only: when stored rainfall ends before the requested
@@ -145,10 +150,22 @@ _SCOPE_RE = re.compile(
     r"flood|streamflow|predict|forecast|history|station|district|gauge|"
     r"rain|risk|report|severity|warning|danger|watch|extreme|normal|flow|"
     r"water|river|discharge|\brp\b|threshold|top|highest|most|max|sql|graph|"
+    r"save|store|insert|persist|"
     r"\bhi\b|hello|help|namaste",
     re.IGNORECASE,
 )
 _STATION_RE = re.compile(r"station\s+(\d+)", re.IGNORECASE)
+_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
+
+
+def _parse_target_date(text: str) -> str | None:
+    m = _DATE_RE.search(text or "")
+    if not m:
+        return None
+    try:
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3))).isoformat()
+    except ValueError:
+        return None
 
 
 def in_scope(text: str) -> bool:
@@ -181,7 +198,7 @@ def parse_intent(text: str) -> dict:
     m = _STATION_RE.search(text or "")
     station_id = int(m.group(1)) if m else None
     wants_history = bool(re.search(r"histor|past|previous|old|last\s+\d*\s*day|ago|graph", lower))
-    wants_predict = bool(re.search(r"predict|forecast|risk|report|future|next\s+\d*\s*day|warn|danger", lower))
+    wants_predict = bool(re.search(r"predict|forecast|risk|report|future|next\s+\d*\s*day|warn|danger|save|store|insert|persist", lower))
     wants_info = bool(re.search(r"list|stations|gauges|which|where|threshold|show.*gauge", lower))
     wants_top = bool(_TOP_RE.search(text or "") and re.search(r"flow|stream|flood|station|gauge", lower))
     wants_rp = bool(_RP_RE.search(text or ""))
@@ -192,7 +209,7 @@ def parse_intent(text: str) -> dict:
         and (wants_predict or wants_top))
     if wants_sweep:
         return {"kind": "sweep", "districts": districts, "station_id": station_id,
-                "days": _parse_days(text, 3), "top_n": 5}
+                "days": _parse_days(text, 3), "top_n": 5, "target_date": _parse_target_date(text)}
     if wants_rp and wants_top:
         return {"kind": "sql_rp", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 3), "top_n": 5}
@@ -201,10 +218,13 @@ def parse_intent(text: str) -> dict:
         top_n = max(1, min(int(n.group(1)) if n else 5, 10))
         return {"kind": "sql_top", "districts": districts, "station_id": station_id,
                 "days": _parse_days(text, 3), "top_n": top_n}
+    # NOTE: forecast intent wins over history when a station is explicitly named
+    # ("history and forecast of station 92" forecasts; use bare "history of
+    # station 92" for the past-only path).
     if wants_predict and station_id is not None:
-        # A named station + forecast verbs = single-station model run.
+        # A named station + forecast verbs = single-station model run (saved).
         return {"kind": "predict_station", "districts": districts, "station_id": station_id,
-                "days": 7, "top_n": 5}
+                "days": 7, "top_n": 5, "target_date": _parse_target_date(text)}
     if districts and not station_id and re.search(r"\brain\b|rainfall", lower):
         # District rainfall history (observed, not a forecast).
         return {"kind": "district_rainfall", "districts": districts, "station_id": None,
@@ -214,7 +234,7 @@ def parse_intent(text: str) -> dict:
                 "days": _parse_days(text, 7), "top_n": 5}
     if wants_predict and districts:
         return {"kind": "predict", "districts": districts, "station_id": station_id,
-                "days": 7, "top_n": 5}
+                "days": 7, "top_n": 5, "target_date": _parse_target_date(text)}
     if wants_info:
         return {"kind": "info", "districts": districts, "station_id": station_id,
                 "days": 7, "top_n": 5}
@@ -285,7 +305,7 @@ def _post_chat(messages: list, tools: list | None, model: str, max_tokens: int) 
         for attempt in range(tries):
             try:
                 r = httpx.post(OPENROUTER_URL, headers=headers, json=body, timeout=LLM_TIMEOUT_S)
-                if r.status_code in (429, 500, 502, 503):
+                if r.status_code in (408, 429, 500, 502, 503, 504, 529):
                     last_err = f"openrouter {r.status_code} on {cand}"
                     time.sleep(2 * (2 ** attempt))
                     continue
@@ -442,7 +462,11 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
             rows = out.get("rows", []) or []
             _tables.append({"columns": out.get("columns", []), "rows": rows[:10]})
             for c in charts_from_rows(rows, out.get("columns", [])):
-                if c["station_id"] not in {x["station_id"] for x in charts}:
+                key = (c["station_id"], c.get("peak_date", ""), c.get("unit", ""))
+                if key not in {(_x["station_id"], _x.get("peak_date", ""), _x.get("unit", ""))
+                               for _x in charts}:
+                    if sum(1 for _x in charts if _x["station_id"] == c["station_id"]) >= 2:
+                        continue
                     charts.append(c)
             return
         if tool == "sweep_stations":
@@ -512,8 +536,10 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                 "thresholds": out.get("thresholds", {}),
                 "chart": out.get("chart", []),
                 "severity": (out.get("history") or [{}])[-1].get("severity", "") if out.get("history") else "",
-                "peak_flow": max([h["streamflow"] for h in out.get("history", [])] or [0.0]),
-                "peak_date": (out.get("history") or [{}])[-1].get("date", "") if out.get("history") else "",
+                "peak_flow": out.get("peak_flow",
+                                     max([h["streamflow"] for h in out.get("history", [])] or [0.0])),
+                "peak_date": out.get("peak_date") or
+                             ((out.get("history") or [{}])[-1].get("date", "") if out.get("history") else ""),
             })
 
     reply = ""
@@ -549,8 +575,18 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                     "tool_calls": calls,
                 })
                 for c in calls:
-                    args = json.loads(c["function"].get("arguments") or "{}")
-                    if c["function"]["name"] == "predict_district":
+                    try:
+                        args = json.loads(c["function"].get("arguments") or "{}")
+                    except Exception as e:
+                        convo.append({
+                            "role": "tool", "tool_call_id": c.get("id", ""),
+                            "content": json.dumps({"error": f"bad arguments JSON: {e}; retry with valid JSON"}),
+                        })
+                        event("llm.repair", tool=c["function"].get("name", "?"),
+                              args={}, error="bad arguments JSON", level=logging.WARNING)
+                        continue
+                    if c["function"]["name"] in ("predict_district", "predict_station",
+                                                 "sweep_stations"):
                         args.setdefault("horizon_days", horizon_days)
                     out = _record(c["function"]["name"], args)
                     convo.append({
@@ -564,13 +600,29 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
     # Deterministic guarantee: if LLM missing/unused/failed, run parsed intent directly.
     if not trace and intent["kind"] != "none":
         if intent["kind"] == "predict":
-            _record("predict_district", {"districts": intent["districts"][:2], "horizon_days": horizon_days})
+            _record("predict_district", {"districts": intent["districts"][:2],
+                                         "horizon_days": horizon_days,
+                                         "target_date": intent.get("target_date")})
         elif intent["kind"] == "history":
             _record("station_history", {"station_id": intent["station_id"], "days": intent["days"]})
         elif intent["kind"] == "info":
             _record("district_stations", {"district": (intent["districts"][:1] or [None])[0]})
         elif intent["kind"] == "sql_top":
+            from datetime import date as _date
+
             top = _record("run_sql", {"sql": CANNED_TOP_FLOW})
+            cov = _record("run_sql", {"sql": "SELECT MAX(date) AS m FROM gauge_state"})
+            try:
+                max_date = (cov.get("rows") or [{}])[0].get("m", "")
+                stale = (today_ist() - _date.fromisoformat(max_date)).days > 7
+            except (TypeError, ValueError):
+                stale = False
+            if stale:
+                # Doctrine: never declare thin coverage final without sweeping.
+                # Sync calls hit the scope cap with guidance; jobs run it fully.
+                _record("sweep_stations", {"all_stations": True,
+                                           "horizon_days": horizon_days})
+                top = _record("run_sql", {"sql": CANNED_TOP_FLOW})
             for row in (top.get("rows", []) or [])[: intent["top_n"]]:
                 try:
                     _record("station_history",
@@ -581,7 +633,8 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
             _record("run_sql", {"sql": CANNED_MAX_RP})
         elif intent["kind"] == "predict_station":
             _record("predict_station", {"station_id": intent["station_id"],
-                                        "horizon_days": horizon_days})
+                                        "horizon_days": horizon_days,
+                                        "target_date": intent.get("target_date")})
         elif intent["kind"] == "district_rainfall":
             first = _record("district_rainfall", {"district": intent["districts"][0],
                                                   "days": intent["days"]})
@@ -591,7 +644,7 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
                 _record("district_rainfall", {"district": intent["districts"][0],
                                               "days": intent["days"]})
         elif intent["kind"] == "sweep":
-            scope = {"horizon_days": horizon_days}
+            scope = {"horizon_days": horizon_days, "target_date": intent.get("target_date")}
             if intent["districts"]:
                 scope["districts"] = intent["districts"][:2]
             else:
@@ -659,10 +712,21 @@ def _template_reply(trace: list, charts: list, briefings: list, tables: list | N
             for r in rows[:10]:
                 parts.append(" | ".join(str(r.get(c, "")) for c in cols))
     for c in charts[:6]:
+        pts = c.get("chart") or []
+        saved = sorted({p["date"] for p in pts if p.get("kind") == "forecast"})
         parts.append(
             f"Station {c['station_id']} ({c.get('district', '')}): "
             f"peak {c.get('peak_flow')} m³/s on {c.get('peak_date')} [{c.get('severity')}], "
-            f"{len(c.get('chart', []))} chart points."
+            f"{len(pts)} chart points."
+            + (f" Saved {len(saved)} forecast rows to gauge_state ({saved[0]}..{saved[-1]})."
+               if saved else "")
         )
+    savers = sorted({t["tool"] for t in trace
+                     if t["ok"] and t["tool"] in ("predict_district", "predict_station", "sweep_stations")})
+    if savers and not any((c.get("chart") or []) and
+                          any(p.get("kind") == "forecast" for p in (c.get("chart") or []))
+                          for c in charts):
+        parts.append(f"Forecasts saved to gauge_state via {', '.join(savers)} "
+                     f"(see tool results above for per-station peaks).")
     parts.extend(b for b in briefings if b)
     return "\n".join(parts) if parts else FALLBACK_REPLY

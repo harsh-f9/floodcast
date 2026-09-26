@@ -47,18 +47,16 @@ def migrate(conn):
         "ON station_district(district)"
     )
     if "station_static" not in _tables(conn):
-        conn.execute(
-            "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, datetime('now'))"
-        )
+        print("003: station_static missing; version not recorded, will retry next boot.")
         return
     path = _mapping_path()
+    wrote = 0
     if path:
         with open(path, encoding="utf-8") as f:
             rows = json.load(f)
         mapping = {r.get("gauge_id"): r for r in rows if r.get("gauge_id")}
         station_rows = conn.execute(
             "SELECT station_id, station_name FROM station_static").fetchall()
-        filled = 0
         for sid, gname in station_rows:
             info = mapping.get(gname, {})
             conn.execute(
@@ -69,8 +67,11 @@ def migrate(conn):
                  info.get("sub_district", "") or ""],
             )
             if info.get("district"):
-                filled += 1
-        print(f"003: backfilled station_district ({filled}/{len(station_rows)} with district).")
-    conn.execute(
-        "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, datetime('now'))"
-    )
+                wrote += 1
+        print(f"003: backfilled station_district ({wrote}/{len(station_rows)} with district).")
+    if wrote:
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, datetime('now'))"
+        )
+    else:
+        print("003: nothing backfilled (no static rows or no JSON); version not recorded, will retry next boot.")

@@ -64,6 +64,25 @@ class TestIntentParse(unittest.TestCase):
         self.assertEqual(i["kind"], "predict_station")
         self.assertEqual(i["station_id"], 92)
 
+    def test_save_insert_verbs_route_to_predict(self):
+        i = agent.parse_intent("save future predictions for station 92")
+        self.assertEqual(i["kind"], "predict_station")
+        i = agent.parse_intent("insert 7-day forecast for Bijnor")
+        self.assertEqual(i["kind"], "predict")
+        self.assertTrue(agent.in_scope("please store the forecast for station 5"))
+
+    def test_explicit_target_date_parsed(self):
+        i = agent.parse_intent("predict station 92 on 2026-09-29")
+        self.assertEqual(i["kind"], "predict_station")
+        self.assertEqual(i["target_date"], "2026-09-29")
+        i = agent.parse_intent("insert forecast for Bijnor for 2026-09-30")
+        self.assertEqual(i["kind"], "predict")
+        self.assertEqual(i["target_date"], "2026-09-30")
+
+    def test_bad_date_ignored(self):
+        self.assertIsNone(agent._parse_target_date("predict station 92 on 2026-13-45"))
+        self.assertIsNone(agent._parse_target_date("predict Bijnor"))
+
     def test_history_station_stays_history(self):
         i = agent.parse_intent("history of station 92")
         self.assertEqual(i["kind"], "history")
@@ -326,6 +345,32 @@ class TestSummarizerLayer(unittest.TestCase):
             text, used, _ = agent._summarize("q", "raw", [], [])
         self.assertFalse(used)
         self.assertEqual(text, "raw")
+
+    def test_bad_tool_args_json_repaired(self):
+        bad_call = {"choices": [{"message": {
+            "content": "",
+            "tool_calls": [{"id": "c1", "function": {"name": "run_sql", "arguments": "{oops"}}],
+        }}]}
+        good_call = {"choices": [{"message": {"content": "done", "tool_calls": []}}]}
+        M = agent.model_name()
+        with patch.object(agent, "llm_configured", return_value=True), \
+             patch.object(agent, "_post_chat",
+                          side_effect=[(bad_call, M), (good_call, M),
+                                       (good_call, M)]):
+            out = agent.run_agent([{"role": "user", "content": "how many stations exist"}])
+        self.assertTrue(out["llm_used"])
+        self.assertEqual(out["reply"], "done")
+
+    def test_template_savers_line(self):
+        charts = [{
+            "station_id": 5, "district": "X", "peak_flow": 3.0, "peak_date": "2026-01-02",
+            "severity": "NORMAL",
+            "chart": [{"date": "2026-01-02", "streamflow": 3.0, "kind": "past"}],
+        }]
+        text = agent._template_reply(
+            [{"tool": "sweep_stations", "args": {}, "ok": True, "error": ""}],
+            charts, [], [])
+        self.assertIn("Forecasts saved", text)
 
 
 class TestPaidRescue(unittest.TestCase):

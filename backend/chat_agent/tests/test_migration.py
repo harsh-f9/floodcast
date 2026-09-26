@@ -48,19 +48,26 @@ class TestMigration003(unittest.TestCase):
         self.assertIn((3,), conn.execute("SELECT version FROM schema_migrations").fetchall())
         conn.close()
 
-    def test_missing_json_records_version_with_empty_table(self):
+    def test_missing_json_records_nothing_and_retries(self):
         conn = self._memdb()
         with patch.object(m03, "_mapping_path", return_value=None):
             m03.migrate(conn)
         self.assertEqual(
             conn.execute("SELECT COUNT(*) FROM station_district").fetchone()[0], 0)
+        self.assertEqual(
+            conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 3").fetchone()[0], 0)
+        # Retry once JSON is available: backfills and records.
+        m03.migrate(conn)
+        rows = dict(conn.execute("SELECT station_id, district FROM station_district").fetchall())
+        self.assertEqual(rows[92], "Agra")
         self.assertIn((3,), conn.execute("SELECT version FROM schema_migrations").fetchall())
         conn.close()
 
-    def test_no_station_static_still_records_version(self):
+    def test_no_station_static_records_nothing(self):
         conn = sqlite3.connect(":memory:")
         m03.migrate(conn)
-        self.assertIn((3,), conn.execute("SELECT version FROM schema_migrations").fetchall())
+        self.assertEqual(
+            conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 3").fetchone()[0], 0)
         conn.close()
 
 

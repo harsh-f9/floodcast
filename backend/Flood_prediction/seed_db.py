@@ -112,35 +112,36 @@ def seed():
         )
         _enriched = None
         for _cand in (
-            os.path.join(os.path.dirname(DEPLOY_DIR), "..", "..", "gauge_locations_enriched.json"),
-            os.path.join(os.path.dirname(DEPLOY_DIR), "..", "..", "src", "data", "gauge_locations_enriched.json"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "gauge_locations_enriched.json"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src", "data", "gauge_locations_enriched.json"),
         ):
             if os.path.exists(_cand):
                 _enriched = _cand
                 break
-        _drows, _filled = [], 0
-        _mapping = {}
-        if _enriched:
+        if not _enriched:
+            print("   ⚠️  station_district seed skipped: enriched JSON not found (migration 003 backfills when available).")
+        else:
             import json as _json2
 
             with open(_enriched, encoding="utf-8") as _f:
                 _mapping = {r.get("gauge_id"): r for r in _json2.load(_f) if r.get("gauge_id")}
-        for _, row in gauges.iterrows():
-            _info = _mapping.get(row["station_name"], {})
-            _drows.append((
-                int(row["station_id"]),
-                str(_info.get("district", "") or ""),
-                str(_info.get("location_name", "") or ""),
-                str(_info.get("sub_district", "") or ""),
-            ))
-            if _info.get("district"):
-                _filled += 1
-        executemany(
-            "INSERT OR REPLACE INTO station_district "
-            "(station_id, district, location_name, sub_district) VALUES (?,?,?,?)",
-            _drows
-        )
-        print(f"   ✅ Inserted {len(_drows)} district rows ({_filled} with district).")
+            _drows, _filled = [], 0
+            for _, row in gauges.iterrows():
+                _info = _mapping.get(row["station_name"], {})
+                _drows.append((
+                    int(row["station_id"]),
+                    str(_info.get("district", "") or ""),
+                    str(_info.get("location_name", "") or ""),
+                    str(_info.get("sub_district", "") or ""),
+                ))
+                if _info.get("district"):
+                    _filled += 1
+            executemany(
+                "INSERT OR REPLACE INTO station_district "
+                "(station_id, district, location_name, sub_district) VALUES (?,?,?,?)",
+                _drows
+            )
+            print(f"   ✅ Inserted {len(_drows)} district rows ({_filled} with district).")
     except Exception as e:
         print(f"   ⚠️  station_district seed skipped: {e}")
 

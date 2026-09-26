@@ -25,6 +25,12 @@ if _HAS_FASTAPI:
     router = APIRouter()
     log = logging.getLogger("chat_agent")
 
+    import threading as _th
+
+    _stream_lock = _th.Lock()
+    _stream_inflight = [0]
+    _STREAM_MAX = 2
+
     @router.get("/api/chat/status", response_model=StatusResponse)
     def chat_status():
         return {
@@ -46,6 +52,12 @@ if _HAS_FASTAPI:
 
         if not is_enabled():
             raise HTTPException(status_code=503, detail="Chat agent is disabled.")
+        with _stream_lock:
+            if _stream_inflight[0] >= _STREAM_MAX:
+                raise HTTPException(status_code=429, detail={
+                    "message": "Too many live streams. Use background jobs instead.",
+                    "suggest_jobs": True})
+            _stream_inflight[0] += 1
         rid = uuid.uuid4().hex[:8]
         q: _queue.Queue = _queue.Queue()
         _DONE = object()
@@ -82,15 +94,19 @@ if _HAS_FASTAPI:
 
             _threading.Thread(target=_worker, daemon=True,
                               name=f"ChatStream-{rid}").start()
-            while True:
-                try:
-                    evt = await _anyio.to_thread.run_sync(q.get, cancellable=True)
-                except Exception:
-                    break
-                if evt is _DONE:
-                    break
-                yield f"data: {_json.dumps(evt, default=str)}\n\n"
-            yield "data: {\"type\": \"stream_end\"}\n\n"
+            try:
+                while True:
+                    try:
+                        evt = await _anyio.to_thread.run_sync(q.get, cancellable=True)
+                    except Exception:
+                        break
+                    if evt is _DONE:
+                        break
+                    yield f"data: {_json.dumps(evt, default=str)}\n\n"
+                yield "data: {\"type\": \"stream_end\"}\n\n"
+            finally:
+                with _stream_lock:
+                    _stream_inflight[0] = max(0, _stream_inflight[0] - 1)
 
         return StreamingResponse(_gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache",
@@ -109,6 +125,9 @@ if _HAS_FASTAPI:
                 horizon_days=req.horizon_days,
             )
         except ValueError as e:
+            if "background job" in str(e):
+                raise HTTPException(status_code=429, detail={
+                    "message": str(e), "suggest_jobs": True})
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:  # never leak tracebacks to the client
             log.exception("chat run failed")
@@ -134,8 +153,6 @@ if _HAS_FASTAPI:
     @router.post("/api/chat/jobs", status_code=202)
     def chat_job_submit(req: ChatRequest):
         """Start a background agentic run (for multi-minute sweeps)."""
-        import json as _json
-
         from . import jobs as _jobs
 
         if not is_enabled():
@@ -145,6 +162,9 @@ if _HAS_FASTAPI:
                 [{"role": m.role, "content": m.content} for m in req.messages],
                 horizon_days=req.horizon_days,
             )
+        except _jobs.QueueFullError as e:
+            raise HTTPException(status_code=429, detail={"message": str(e),
+                                                         "suggest_jobs": True})
         except Exception:
             log.exception("job submit failed")
             raise HTTPException(status_code=500, detail="Could not start job.")
@@ -156,6 +176,8 @@ if _HAS_FASTAPI:
 
         from . import jobs as _jobs
 
+        if not is_enabled():
+            raise HTTPException(status_code=503, detail="Chat agent is disabled.")
         job = _jobs.get_job(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found.")
@@ -180,5 +202,15 @@ if _HAS_FASTAPI:
             "result": result,
             "error": job.get("error", ""),
         }
+
+    @router.delete("/api/chat/jobs/{job_id}")
+    def chat_job_cancel(job_id: str):
+        from . import jobs as _jobs
+
+        if not is_enabled():
+            raise HTTPException(status_code=503, detail="Chat agent is disabled.")
+        if not _jobs.cancel(job_id):
+            raise HTTPException(status_code=404, detail="Job not found or already finished.")
+        return {"job_id": job_id, "status": "cancelled"}
 else:
     router = None

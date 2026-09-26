@@ -183,13 +183,25 @@ def cleanup_old_rainfall(station_id: int, cutoff_date: str):
     )
 
 
-def insert_gauge_state(station_id: int, date_str: str, raw_streamflow: float):
-    """Insert a gauge_state record (replace if exists)."""
-    execute(
-        "INSERT OR REPLACE INTO gauge_state (station_id, date, raw_streamflow) "
-        "VALUES (?, ?, ?)",
-        [station_id, date_str, raw_streamflow]
-    )
+def insert_gauge_state(station_id: int, date_str: str, raw_streamflow: float,
+                       source: str | None = None):
+    """Insert a gauge_state record (replace if exists).
+
+    source is optional provenance (e.g. 'forecast'); when omitted the legacy
+    3-column insert runs unchanged (column default applies where present).
+    """
+    if source is None:
+        execute(
+            "INSERT OR REPLACE INTO gauge_state (station_id, date, raw_streamflow) "
+            "VALUES (?, ?, ?)",
+            [station_id, date_str, raw_streamflow]
+        )
+    else:
+        execute(
+            "INSERT OR REPLACE INTO gauge_state (station_id, date, raw_streamflow, source) "
+            "VALUES (?, ?, ?, ?)",
+            [station_id, date_str, raw_streamflow, source]
+        )
 
 
 def cleanup_old_gauge_state(station_id: int, cutoff_date: str):

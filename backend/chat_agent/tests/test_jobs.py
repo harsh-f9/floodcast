@@ -22,7 +22,7 @@ def _card(sid, peak):
 class TestSweep(unittest.TestCase):
     def test_resolves_districts_and_ranks(self):
         with patch.object(tools, "_forecast_one_station",
-                          side_effect=lambda s, h, d="": _card(s["station_id"], float(s["station_id"]))):
+                          side_effect=lambda s, h, d="", t=None: _card(s["station_id"], float(s["station_id"]))):
             out = tools.run_tool("sweep_stations", {"districts": ["Hapur"], "horizon_days": 2})
         self.assertGreater(out["swept"], 0)
         self.assertEqual(out["failed"], [])
@@ -30,7 +30,7 @@ class TestSweep(unittest.TestCase):
         self.assertEqual(peaks, sorted(peaks, reverse=True))
 
     def test_all_scope_and_failure_isolation(self):
-        def flaky(s, h, d=""):
+        def flaky(s, h, d="", t=None):
             if s["station_id"] == 1:
                 raise RuntimeError("model blew up")
             return _card(s["station_id"], 1.0)
@@ -43,7 +43,7 @@ class TestSweep(unittest.TestCase):
 
     def test_sync_cap_for_huge_scope(self):
         with patch.object(tools, "_forecast_one_station",
-                          side_effect=lambda s, h, d="": _card(s["station_id"], 1.0)):
+                          side_effect=lambda s, h, d="", t=None: _card(s["station_id"], 1.0)):
             with self.assertRaises(ValueError) as cm:
                 tools.run_tool("sweep_stations", {"all_stations": True})
         self.assertIn("40", str(cm.exception))
@@ -52,7 +52,7 @@ class TestSweep(unittest.TestCase):
         jobs._job_id.set("test-job")
         try:
             with patch.object(tools, "_forecast_one_station",
-                              side_effect=lambda s, h, d="": _card(s["station_id"], 1.0)):
+                              side_effect=lambda s, h, d="", t=None: _card(s["station_id"], 1.0)):
                 out = tools.run_tool("sweep_stations", {"all_stations": True})
         finally:
             jobs._job_id.set("")
@@ -69,6 +69,15 @@ class TestSweep(unittest.TestCase):
     def test_schema_lists_sweep(self):
         names = {t["function"]["name"] for t in tools.TOOL_SCHEMAS}
         self.assertIn("sweep_stations", names)
+
+    def test_bare_string_district_not_split(self):
+        with patch.object(tools, "_forecast_one_station",
+                          side_effect=lambda s, h, d="", t=None: {"station_id": s["station_id"],
+                                                                 "peak_flow": 1.0, "peak_date": "2026-01-01",
+                                                                 "severity": "NORMAL", "chart": [],
+                                                                 "thresholds": {}, "station_name": ""}):
+            out = tools.run_tool("sweep_stations", {"districts": "Hapur"})
+        self.assertGreater(out["swept"], 0)
 
 
 class TestJobs(unittest.TestCase):
@@ -98,7 +107,7 @@ class TestJobs(unittest.TestCase):
     def test_progress_written_by_sweep(self):
         events = []
 
-        def fake_forecast(s, h, d=""):
+        def fake_forecast(s, h, d="", t=None):
             import json as _json
             jobs.set_progress("prog-job", s["station_id"] + 1, 3, "sweeping")
             return _card(s["station_id"], 1.0)
@@ -119,6 +128,74 @@ class TestJobs(unittest.TestCase):
         job = jobs.get_job("prog-job")
         self.assertEqual(job["progress_done"], 3)
         self.assertEqual(job["progress_total"], 3)
+
+    def test_queue_cap(self):
+        jobs.init_table()
+        conn = jobs._conn()
+        ids = [f"cap-test-{i}" for i in range(jobs.MAX_NONTERMINAL_JOBS)]
+        try:
+            for jid in ids:
+                conn.execute("INSERT OR REPLACE INTO chat_jobs (id, status) VALUES (?, 'queued')", [jid])
+            conn.commit()
+            with self.assertRaises(jobs.QueueFullError):
+                jobs.submit([{"role": "user", "content": "hi"}])
+        finally:
+            for jid in ids:
+                conn.execute("DELETE FROM chat_jobs WHERE id = ?", [jid])
+            conn.commit()
+            conn.close()
+
+    def test_cancel_flow(self):
+        jobs.init_table()
+        conn = jobs._conn()
+        try:
+            conn.execute("INSERT OR REPLACE INTO chat_jobs (id, status) VALUES ('cancel-me', 'queued')")
+            conn.commit()
+        finally:
+            conn.close()
+        self.assertTrue(jobs.cancel("cancel-me"))
+        self.assertFalse(jobs.cancel("nope-not-real"))
+        job = jobs.get_job("cancel-me")
+        self.assertEqual(job["status"], "cancelled")
+        conn = jobs._conn()
+        try:
+            conn.execute("DELETE FROM chat_jobs WHERE id = 'cancel-me'")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_horizon_persisted(self):
+        job_id = jobs.submit([{"role": "user", "content": "hi"}], horizon_days=2)
+        try:
+            job = jobs.get_job(job_id)
+            self.assertEqual(job["horizon_days"], 2)
+        finally:
+            jobs.cancel(job_id)
+            self._wait(job_id)
+
+    def test_sweep_aborts_on_cancel(self):
+        def slow_forecast(s, h, d="", t=None):
+            import time as _t
+            _t.sleep(0.2)
+            return {"station_id": s["station_id"], "peak_flow": 1.0,
+                    "peak_date": "2026-01-01", "severity": "NORMAL", "chart": [],
+                    "thresholds": {}, "station_name": ""}
+
+        jobs.init_table()
+        conn = jobs._conn()
+        try:
+            conn.execute("INSERT OR REPLACE INTO chat_jobs (id, status) VALUES ('cancel-sweep', 'running')")
+            conn.commit()
+        finally:
+            conn.close()
+        jobs._job_id.set("cancel-sweep")
+        jobs.cancel("cancel-sweep")
+        try:
+            with patch.object(tools, "_forecast_one_station", side_effect=slow_forecast):
+                out = tools.run_tool("sweep_stations", {"station_ids": [0, 1, 2]})
+        finally:
+            jobs._job_id.set("")
+        self.assertEqual(out["swept"], 0)
 
 
 if __name__ == "__main__":
