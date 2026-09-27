@@ -49,6 +49,10 @@ class TestSweep(unittest.TestCase):
         self.assertIn("40", str(cm.exception))
 
     def test_no_cap_inside_job(self):
+        import Flood_prediction.database as flood_db
+
+        expected = flood_db.get_station_count()
+        self.assertGreater(expected, 300)
         jobs._job_id.set("test-job")
         try:
             with patch.object(tools, "_forecast_one_station",
@@ -56,7 +60,7 @@ class TestSweep(unittest.TestCase):
                 out = tools.run_tool("sweep_stations", {"all_stations": True})
         finally:
             jobs._job_id.set("")
-        self.assertEqual(out["swept"], 378)
+        self.assertEqual(out["swept"], expected)
 
     def test_unknown_district_and_station_rejected(self):
         with self.assertRaises(ValueError):
