@@ -102,6 +102,10 @@ def validate_sql(sql: str) -> tuple:
             continue
         if qualifier:
             real = table_of_alias.get(qualifier, qualifier)
+            if real in known_aliases:
+                # Alias of a CTE/derived table (e.g. FROM latest_flow lf):
+                # inner query already validated recursively.
+                continue
             cols = ALLOWED_COLUMNS.get(physical_upper.get(real, real), None)
             if cols is None or cname not in {c.upper() for c in cols}:
                 errors.append(f"Unknown column '{col.name}' for table '{col.table}'.")

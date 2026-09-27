@@ -57,7 +57,7 @@ class TestDatePrompt(unittest.TestCase):
     def test_prompt_carries_today_ist(self):
         prompt = agent.build_system_prompt()
         self.assertIn(tools.today_ist().isoformat(), prompt)
-        self.assertIn("Asia/Kolkata", prompt)
+        self.assertIn("user-local date", prompt)
 
     def test_prompt_without_date_flag(self):
         with patch.dict(os.environ, {"CHAT_DATE_IN_PROMPT": "0"}):

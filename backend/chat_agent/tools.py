@@ -13,18 +13,10 @@ from datetime import date, timedelta, timezone
 import logging
 
 from . import district_map
+from .clock import IST, today_ist
 from .log import event
 from .schema import schema_prompt as _schema_prompt  # noqa: F401 (re-export for agent)
 from .sql_exec import execute_sql
-
-IST = timezone(timedelta(hours=5, minutes=30))
-
-
-def today_ist() -> date:
-    """Current date in Asia/Kolkata (fixed +5:30 offset, no tz database needed)."""
-    from datetime import datetime
-
-    return datetime.now(IST).date()
 
 MAX_DISTRICTS_PER_PREDICT = 2
 MAX_STATIONS_PER_DISTRICT = 6

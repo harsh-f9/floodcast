@@ -98,5 +98,31 @@ class TestValidAllowed(unittest.TestCase):
         self.assertNotIn("DROP", norm.upper())
 
 
+    def test_reported_top5_queries_allowed(self):
+        # Exact shapes from the 2026-09-27 user report (Phase 06).
+        cte = (
+            "WITH latest_flow AS ("
+            "SELECT gs.station_id, gs.raw_streamflow, gs.date FROM gauge_state gs "
+            "JOIN (SELECT station_id, MAX(date) AS max_date FROM gauge_state "
+            "GROUP BY station_id) lm "
+            "ON gs.station_id = lm.station_id AND gs.date = lm.max_date) "
+            "SELECT lf.station_id, lf.raw_streamflow, lf.date, ss.station_name "
+            "FROM latest_flow lf "
+            "JOIN station_static ss ON lf.station_id = ss.station_id "
+            "ORDER BY lf.raw_streamflow DESC LIMIT 5"
+        )
+        ok, errs, norm = validate_sql(cte)
+        self.assertTrue(ok, errs)
+        self.assertIn("LIMIT 5", norm)
+        nested = (
+            "SELECT a.station_id, a.raw_streamflow FROM "
+            "(SELECT g.station_id, g.raw_streamflow FROM gauge_state g "
+            "WHERE g.date >= (SELECT date(MAX(date), '-14 days') FROM gauge_state)) a "
+            "ORDER BY a.raw_streamflow DESC LIMIT 5"
+        )
+        ok, errs, _ = validate_sql(nested)
+        self.assertTrue(ok, errs)
+
+
 if __name__ == "__main__":
     unittest.main()

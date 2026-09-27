@@ -346,7 +346,15 @@ def predict_flood(req: FloodPredictionRequest):
     """
     try:
         target_date = date.fromisoformat(req.date)
-        if target_date > date.today():
+        try:
+            try:
+                from Flood_prediction.prediction_service import _today_ist
+            except ImportError:
+                from prediction_service import _today_ist
+            _today = _today_ist()
+        except Exception:
+            _today = date.today()
+        if target_date > _today:
             from prediction_service import predict_future_streamflow
             result = predict_future_streamflow(req.station_id, target_date, client_rainfall=req.client_rainfall_data)
         else:

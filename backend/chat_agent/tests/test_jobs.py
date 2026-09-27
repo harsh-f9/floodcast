@@ -177,6 +177,15 @@ class TestJobs(unittest.TestCase):
             jobs.cancel(job_id)
             self._wait(job_id)
 
+    def test_client_today_persisted(self):
+        job_id = jobs.submit([{"role": "user", "content": "hi"}], client_today="2026-09-27")
+        try:
+            job = jobs.get_job(job_id)
+            self.assertEqual(job["client_today"], "2026-09-27")
+        finally:
+            jobs.cancel(job_id)
+            self._wait(job_id)
+
     def test_sweep_aborts_on_cancel(self):
         def slow_forecast(s, h, d="", t=None):
             import time as _t

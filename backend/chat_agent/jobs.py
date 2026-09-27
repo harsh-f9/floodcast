@@ -56,6 +56,7 @@ def init_table():
               question TEXT NOT NULL DEFAULT '',
               messages_json TEXT NOT NULL DEFAULT '[]',
               horizon_days INTEGER NOT NULL DEFAULT 7,
+              client_today TEXT NOT NULL DEFAULT '',
               events_json TEXT NOT NULL DEFAULT '[]',
               result_json TEXT NOT NULL DEFAULT '',
               error TEXT NOT NULL DEFAULT '')"""
@@ -65,6 +66,8 @@ def init_table():
             conn.execute("ALTER TABLE chat_jobs ADD COLUMN horizon_days INTEGER NOT NULL DEFAULT 7")
         if "messages_json" not in cols:
             conn.execute("ALTER TABLE chat_jobs ADD COLUMN messages_json TEXT NOT NULL DEFAULT '[]'")
+        if "client_today" not in cols:
+            conn.execute("ALTER TABLE chat_jobs ADD COLUMN client_today TEXT NOT NULL DEFAULT ''")
         conn.commit()
     finally:
         conn.close()
@@ -164,7 +167,7 @@ def get_job(job_id: str) -> dict | None:
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ChatJob")
 
 
-def _run(job_id: str, messages: list, horizon_days: int):
+def _run(job_id: str, messages: list, horizon_days: int, client_today: str = ""):
     from .agent import run_agent
     from .log import bind as _bind
 
@@ -180,7 +183,7 @@ def _run(job_id: str, messages: list, horizon_days: int):
             record_event(job_id, evt)
 
         out = run_agent(messages, horizon_days=horizon_days, request_id=job_id[:8],
-                        on_event=_hook)
+                        on_event=_hook, client_today=client_today)
         if cancelled(job_id):
             _write(job_id, status="cancelled", error="cancelled during run")
         else:
@@ -197,7 +200,7 @@ def _run(job_id: str, messages: list, horizon_days: int):
             _cancel_events.pop(job_id, None)
 
 
-def submit(messages: list, horizon_days: int = 7) -> str:
+def submit(messages: list, horizon_days: int = 7, client_today: str = "") -> str:
     init_table()
     if nonterminal_count() >= MAX_NONTERMINAL_JOBS:
         raise QueueFullError(
@@ -209,14 +212,14 @@ def submit(messages: list, horizon_days: int = 7) -> str:
     conn = _conn()
     try:
         conn.execute(
-            "INSERT INTO chat_jobs (id, status, question, messages_json, horizon_days) "
-            "VALUES (?, 'queued', ?, ?, ?)",
-            [job_id, question, json.dumps(trimmed), int(horizon_days)],
+            "INSERT INTO chat_jobs (id, status, question, messages_json, horizon_days, client_today) "
+            "VALUES (?, 'queued', ?, ?, ?, ?)",
+            [job_id, question, json.dumps(trimmed), int(horizon_days), client_today[:10]],
         )
         conn.commit()
     finally:
         conn.close()
-    _executor.submit(_run, job_id, trimmed, horizon_days)
+    _executor.submit(_run, job_id, trimmed, horizon_days, client_today)
     return job_id
 
 
@@ -230,12 +233,13 @@ def resume_interrupted():
     conn = _conn()
     try:
         rows = conn.execute(
-            "SELECT id, messages_json, horizon_days FROM chat_jobs "
+            "SELECT id, messages_json, horizon_days, client_today FROM chat_jobs "
             "WHERE status IN ('queued','running')").fetchall()
-        pending = [(r["id"], r["messages_json"], r["horizon_days"] or 7) for r in rows]
+        pending = [(r["id"], r["messages_json"], r["horizon_days"] or 7,
+                    r["client_today"] or "") for r in rows]
     finally:
         conn.close()
-    for jid, msgs, hz in pending:
+    for jid, msgs, hz, ct in pending:
         try:
             messages = json.loads(msgs) if msgs else []
         except Exception:
@@ -245,6 +249,6 @@ def resume_interrupted():
             continue
         _write(jid, status="queued", error="", events_json="[]",
                progress_note="resumed after restart")
-        _executor.submit(_run, jid, messages, hz)
+        _executor.submit(_run, jid, messages, hz, ct or "")
     if pending:
         print(f"chat jobs resumed: {len(pending)} re-queued.")

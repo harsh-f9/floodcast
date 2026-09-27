@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 import requests
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import time
 
 # Add deploy directory to path so predictor.py can import flood_lstm
@@ -110,6 +110,26 @@ def fetch_rainfall_mm(lat: float, lon: float, date_str: str) -> float:
     except Exception as e:
         print(f"⚠️  Rainfall fetch failed for ({lat},{lon}) on {date_str}: {e}")
         return 0.0
+
+
+def _fetch_live_rainfall_or_raise(lat: float, lon: float, date_str: str) -> float:
+    """Single-day live rainfall fetch that RAISES on any failure.
+
+    Unlike fetch_rainfall_mm (which swallows errors into 0.0), this lets the
+    per-date resolver distinguish genuine 0.0mm from a failed fetch so the
+    fallback chain (batch -> db -> flagged fallback-zero) can engage.
+    """
+    r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+        "latitude": lat,
+        "longitude": lon,
+        "daily": "precipitation_sum",
+        "start_date": date_str,
+        "end_date": date_str,
+        "timezone": "Asia/Kolkata"
+    }, timeout=10)
+    r.raise_for_status()
+    val = r.json()["daily"]["precipitation_sum"][0]
+    return float(val) if val is not None else 0.0
 
 
 def fetch_rainfall_batch(lat: float, lon: float, start_date: str, end_date: str) -> dict[str, float]:
@@ -344,6 +364,222 @@ def build_feature_window(
     return pd.DataFrame(window_rows)
 
 
+# ── Backfill guarantee: anchor → today, per-date live dynamic features ───
+# Phase 07-prediction-backfill-guarantee. Every prediction entry point (agent
+# tools AND user POST /predict, both of which funnel through the two public
+# functions below) must first compute the anchor->today gap date-by-date with
+# live rainfall + feature window + chained model state before answering the
+# requested target date.
+
+IST_OFFSET = timezone(timedelta(hours=5, minutes=30))
+
+
+def _today_ist() -> date:
+    """Portable 'current date': Asia/Kolkata wall-clock wherever this runs.
+
+    Prefers the chat-agent clock (honours validated client_today override);
+    falls back to a fixed +5:30 offset (no tz database needed, works on any
+    Indian laptop and on Render); last resort is the system date.
+    """
+    try:
+        try:
+            from chat_agent.clock import today_ist as _tist
+        except ImportError:
+            from backend.chat_agent.clock import today_ist as _tist
+        return _tist()
+    except Exception:
+        pass
+    try:
+        return datetime.now(IST_OFFSET).date()
+    except Exception:
+        return date.today()
+
+
+def _resolve_rainfall_for_date(
+    station: dict,
+    date_str: str,
+    client_rainfall: dict[str, float] | None = None,
+    batch_state: dict | None = None,
+) -> tuple[float, str]:
+    """Resolve rainfall for ONE date. Always attempts live first.
+
+    Order: client override -> live single-day Open-Meteo -> bulk batch cache
+    (fetched lazily once, only after a live failure) -> stored DB row ->
+    fallback-zero (explicitly flagged, never silent).
+
+    batch_state is a mutable dict owned by the gap loop with keys:
+      cache: dict|None (bulk fallback values), live_disabled: bool (429
+      circuit breaker — stop hammering live for the rest of this call),
+      end: str|None (range end for the lazy bulk fetch).
+
+    Returns (rainfall_mm, source) where source is one of
+    client|live|batch|db|fallback-zero.
+    """
+    if client_rainfall and date_str in client_rainfall:
+        try:
+            return float(client_rainfall[date_str]), "client"
+        except (TypeError, ValueError):
+            pass
+
+    if batch_state is None:
+        batch_state = {}
+
+    if not batch_state.get("live_disabled"):
+        try:
+            val = _fetch_live_rainfall_or_raise(
+                station["latitude"], station["longitude"], date_str
+            )
+            return val, "live"
+        except Exception as e:
+            msg = str(e)
+            if "429" in msg or "Too Many Requests" in msg:
+                # Circuit breaker: one 429 disables further live attempts
+                # for the rest of this gap loop (avoids an IP ban).
+                batch_state["live_disabled"] = True
+            # Lazy bulk fallback: one range call covers the remaining dates.
+            if batch_state.get("cache") is None and batch_state.get("end"):
+                try:
+                    batch_state["cache"] = fetch_rainfall_batch(
+                        station["latitude"], station["longitude"],
+                        date_str, batch_state["end"],
+                    ) or {}
+                except Exception:
+                    batch_state["cache"] = {}
+
+    cache = batch_state.get("cache") or {}
+    if date_str in cache:
+        try:
+            return float(cache[date_str]), "batch"
+        except (TypeError, ValueError):
+            pass
+
+    try:
+        from database import get_rainfall_for_date
+        db_val = get_rainfall_for_date(station["station_id"], date_str)
+    except Exception:
+        db_val = None
+    if db_val is not None:
+        try:
+            return float(db_val), "db"
+        except (TypeError, ValueError):
+            pass
+    return 0.0, "fallback-zero"
+
+
+def _step_single_date(
+    station: dict,
+    rain_series: pd.Series,
+    cur_date: date,
+    last_raw: float,
+    prev_raw: float,
+    client_rainfall: dict[str, float] | None = None,
+    batch_state: dict | None = None,
+    source: str | None = None,
+) -> tuple[dict, float, float]:
+    """Compute (or reuse) ONE date: rainfall -> window -> model -> persist.
+
+    Dates that already have a stored flow row are NEVER recomputed: the chain
+    advances with the stored value and stored rainfall (source 'db'), so
+    backfill never rewrites history. Missing dates get the full live pipeline
+    and are persisted (rainfall via INSERT OR IGNORE, flow via INSERT OR
+    REPLACE with the caller's source tag).
+
+    Returns (audit, new_last_raw, new_prev_raw). audit always carries
+    date/rainfall_mm/rainfall_source/computed; computed rows also carry
+    pred_raw_streamflow.
+    """
+    from database import (
+        get_rainfall_for_date, insert_rainfall, insert_gauge_state, query_one
+    )
+    sid = station["station_id"]
+    cur_str = cur_date.isoformat()
+
+    existing = query_one(
+        "SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?",
+        [sid, cur_str],
+    )
+    if existing is not None:
+        flow_val = float(existing["raw_streamflow"])
+        db_rain = get_rainfall_for_date(sid, cur_str)
+        if db_rain is None and client_rainfall and cur_str in client_rainfall:
+            try:
+                rain_val = float(client_rainfall[cur_str])
+                insert_rainfall(sid, cur_str, rain_val)
+                rain_src = "client"
+            except (TypeError, ValueError):
+                rain_val, rain_src = 0.0, "fallback-zero"
+        else:
+            try:
+                rain_val = float(db_rain) if db_rain is not None else 0.0
+            except (TypeError, ValueError):
+                rain_val = 0.0
+            rain_src = "db" if db_rain is not None else "fallback-zero"
+        rain_series[pd.Timestamp(cur_date)] = rain_val
+        audit = {
+            "date": cur_str,
+            "computed": False,
+            "rainfall_mm": round(rain_val, 2),
+            "rainfall_source": rain_src,
+        }
+        return audit, flow_val, last_raw
+
+    rain_val, rain_src = _resolve_rainfall_for_date(
+        station, cur_str, client_rainfall, batch_state
+    )
+    insert_rainfall(sid, cur_str, rain_val)
+    predictor = get_predictor()
+    df_window = build_feature_window(station, rain_series, last_raw, prev_raw, cur_date)
+    x_dynamic, x_flat = preprocess_window(df_window, predictor)
+    result = predictor.predict(x_dynamic, x_flat, last_raw)
+    flow_val = clamp_flow(result["pred_raw_streamflow"])
+    insert_gauge_state(sid, cur_str, flow_val, source)
+    rain_series[pd.Timestamp(cur_date)] = rain_val
+    audit = {
+        "date": cur_str,
+        "computed": True,
+        "rainfall_mm": round(rain_val, 2),
+        "rainfall_source": rain_src,
+        "pred_raw_streamflow": round(flow_val, 2),
+    }
+    return audit, flow_val, last_raw
+
+
+def ensure_anchor_to_today(
+    station: dict,
+    rain_series: pd.Series,
+    last_date: date,
+    last_raw: float,
+    prev_raw: float,
+    today: date,
+    client_rainfall: dict[str, float] | None = None,
+    source: str | None = None,
+) -> tuple[float, float, list[dict]]:
+    """Fill the anchor->today gap sequentially. Shared by both public functions.
+
+    anchor (last_date) is the latest persisted gauge_state date — the CDS
+    baseflow download date (currently 2026-09-22) on a fresh DB. Every date in
+    last_date+1..today goes through _step_single_date (live rainfall attempt +
+    window + chained predict + persist). No-op when last_date >= today.
+
+    Returns (new_last_raw, new_prev_raw, audits) — audits in chronological
+    order, one entry per gap date (computed or reused).
+    """
+    audits: list[dict] = []
+    if last_date >= today:
+        return last_raw, prev_raw, audits
+    batch_state: dict = {"cache": None, "live_disabled": False,
+                         "end": today.isoformat()}
+    cur = last_date + timedelta(days=1)
+    while cur <= today:
+        audit, last_raw, prev_raw = _step_single_date(
+            station, rain_series, cur, last_raw, prev_raw,
+            client_rainfall, batch_state, source,
+        )
+        audits.append(audit)
+        cur += timedelta(days=1)
+    return last_raw, prev_raw, audits
+
+
 # ── Single-station prediction ────────────────────────────────────────
 
 def run_prediction_for_station(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
@@ -362,15 +598,16 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
         raise ValueError(f"Station {station_id} not found")
         
     target_str = target_date.isoformat()
-    
+    today = _today_ist()
+
     # Reload rain history
     rain_history = get_rainfall_history(station_id)
     rain_series = pd.Series(
         [r["rainfall_mm"] for r in rain_history],
         index=pd.to_datetime([r["date"] for r in rain_history])
     )
-    
-    # Fill any gaps leading up to target_date
+
+    # Anchor = latest persisted gauge_state date (CDS baseflow date on a fresh DB)
     flow_rows = get_gauge_state(station_id, limit=2)
     if flow_rows:
         last_date = date.fromisoformat(flow_rows[0]["date"])
@@ -380,35 +617,27 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
         last_date = target_date - timedelta(days=60)
         last_raw = 0.0
         prev_raw = 0.0
-        
-    if last_date < target_date:
-        # Loop and fill gaps
-        current_date = last_date + timedelta(days=1)
-        forecast_rain = fetch_rainfall_batch(
-            station["latitude"], station["longitude"], 
-            current_date.isoformat(), target_date.isoformat()
-        )
-        predictor = get_predictor()
-        while current_date <= target_date:
-            current_str = current_date.isoformat()
-            db_flow_row_temp = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
-            if db_flow_row_temp is not None:
-                pred_raw_streamflow = db_flow_row_temp["raw_streamflow"]
-                db_rain = get_rainfall_for_date(station_id, current_str)
-                fetched_rain = db_rain if db_rain is not None else 0.0
-            else:
-                fetched_rain = forecast_rain.get(current_str, 0.0)
-                insert_rainfall(station_id, current_str, fetched_rain)
-                df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
-                x_dynamic, x_flat = preprocess_window(df_window, predictor)
-                result = predictor.predict(x_dynamic, x_flat, last_raw)
-                pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
-                insert_gauge_state(station_id, current_str, pred_raw_streamflow)
-                
-            rain_series[pd.Timestamp(current_date)] = fetched_rain
-            prev_raw = last_raw
-            last_raw = pred_raw_streamflow
-            current_date += timedelta(days=1)
+
+    # Phase A (guarantee): anchor -> today with per-date live dynamic
+    # features. Always runs, even when target <= today ("backfill then extend").
+    last_raw, prev_raw, gap_audits = ensure_anchor_to_today(
+        station, rain_series, last_date, last_raw, prev_raw, today,
+        client_rainfall, source=None,
+    )
+
+    # Phase B: extend to the target when it lies beyond today (or beyond the
+    # anchor when the DB already reaches past today).
+    covered_through = max(last_date, today)
+    if covered_through < target_date:
+        batch_state = {"cache": None, "live_disabled": False,
+                       "end": target_date.isoformat()}
+        cur = covered_through + timedelta(days=1)
+        while cur <= target_date:
+            audit, last_raw, prev_raw = _step_single_date(
+                station, rain_series, cur, last_raw, prev_raw,
+                client_rainfall, batch_state, None,
+            )
+            cur += timedelta(days=1)
             
     # Now query target_date prediction values from DB to construct response
     db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, target_str])
@@ -451,6 +680,8 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
         "unit":                 "m³/s",
         "rain_window":          rain_window,
         "debug_features":       debug_features,
+        "backfilled_dates":     [a["date"] for a in gap_audits if a.get("computed")],
+        "backfilled":           gap_audits,
     }
 
 
@@ -465,25 +696,23 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
     (e.g. 'forecast'); None preserves the legacy untagged insert.
     """
     from database import (
-        get_station, get_rainfall_history, get_gauge_state,
-        insert_rainfall, insert_gauge_state, get_rainfall_for_date,
-        query_one
+        get_station, get_rainfall_history, get_gauge_state, query_one
     )
-    
+
     station = get_station(station_id)
     if not station:
         raise ValueError(f"Station {station_id} not found")
-        
-    today = date.today()
-    
+
+    today = _today_ist()
+
     # Load rainfall history
     rain_history = get_rainfall_history(station_id)
     rain_series = pd.Series(
         [r["rainfall_mm"] for r in rain_history],
         index=pd.to_datetime([r["date"] for r in rain_history])
     )
-    
-    # Get last known gauge state from DB
+
+    # Anchor = latest persisted gauge_state date (CDS baseflow date on fresh DB)
     flow_rows = get_gauge_state(station_id, limit=2)
     if flow_rows:
         last_date = date.fromisoformat(flow_rows[0]["date"])
@@ -493,116 +722,68 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
         last_date = today - timedelta(days=60)
         last_raw = 0.0
         prev_raw = 0.0
-        
-    # Step 1: Backfill any past missing days up to date.today()
-    if last_date < today:
-        current_date = last_date + timedelta(days=1)
-        forecast_rain = fetch_rainfall_batch(
-            station["latitude"], station["longitude"], 
-            current_date.isoformat(), today.isoformat()
-        )
-        predictor = get_predictor()
-        while current_date <= today:
-            current_str = current_date.isoformat()
-            db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
-            if db_flow_row is not None:
-                pred_raw_streamflow = db_flow_row["raw_streamflow"]
-                db_rain = get_rainfall_for_date(station_id, current_str)
-                fetched_rain = db_rain if db_rain is not None else 0.0
-            else:
-                fetched_rain = forecast_rain.get(current_str, 0.0)
-                insert_rainfall(station_id, current_str, fetched_rain)
-                df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
-                x_dynamic, x_flat = preprocess_window(df_window, predictor)
-                result = predictor.predict(x_dynamic, x_flat, last_raw)
-                pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
-                insert_gauge_state(station_id, current_str, pred_raw_streamflow, source)
-            
-            rain_series[pd.Timestamp(current_date)] = fetched_rain
-            prev_raw = last_raw
-            last_raw = pred_raw_streamflow
-            current_date += timedelta(days=1)
 
-    # Reload last known gauge state (now guaranteed to be today or later)
-    flow_rows = get_gauge_state(station_id, limit=2)
-    last_date = date.fromisoformat(flow_rows[0]["date"])
-    last_raw = flow_rows[0]["raw_streamflow"]
-    prev_raw = flow_rows[1]["raw_streamflow"] if len(flow_rows) > 1 else last_raw
+    # Step 1 (guarantee): anchor -> today, per-date live dynamic features.
+    # Always runs, even when target <= today ("backfill then extend").
+    last_raw, prev_raw, gap_audits = ensure_anchor_to_today(
+        station, rain_series, last_date, last_raw, prev_raw, today,
+        client_rainfall, source,
+    )
+    covered_through = max(last_date, today)
 
-    # Step 2: Calculate future trajectory starting from today + 1
-    start_date = today + timedelta(days=1)
-    if client_rainfall:
-        forecast_rain = client_rainfall
-    else:
-        if target_date >= start_date:
-            forecast_rain = fetch_rainfall_batch(
-                station["latitude"], station["longitude"], 
-                start_date.isoformat(), target_date.isoformat()
-            )
-        else:
-            forecast_rain = {}
-            
+    # Step 2: future trajectory from covered_through+1 up to the target.
+    # When target <= today this loop is empty and the target is answered
+    # from the now-persisted rows below (never an empty success).
+    start_date = covered_through + timedelta(days=1)
+    batch_state = {"cache": None, "live_disabled": False,
+                   "end": target_date.isoformat()}
+
     trajectory = []
     current_date = start_date
-    predictor = get_predictor()
-    
-    # Save the window in case loop doesn't execute
-    df_window = None
-    
+
     while current_date <= target_date:
         current_str = current_date.isoformat()
-        db_flow_row = query_one("SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?", [station_id, current_str])
-        
-        if db_flow_row is not None:
-            pred_raw_streamflow = db_flow_row["raw_streamflow"]
-            db_rain = get_rainfall_for_date(station_id, current_str)
-            fetched_rain = db_rain if db_rain is not None else 0.0
-            pred_delta_raw = pred_raw_streamflow - last_raw
-        else:
-            fetched_rain = forecast_rain.get(current_str, 0.0)
-            insert_rainfall(station_id, current_str, fetched_rain)
-            df_window = build_feature_window(station, rain_series, last_raw, prev_raw, current_date)
-            x_dynamic, x_flat = preprocess_window(df_window, predictor)
-            result = predictor.predict(x_dynamic, x_flat, last_raw)
-            pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
-            pred_delta_raw = pred_raw_streamflow - last_raw
-            insert_gauge_state(station_id, current_str, pred_raw_streamflow, source)
-            
-        rain_series[pd.Timestamp(current_date)] = fetched_rain
-        
+        anchor_before = last_raw
+        audit, last_raw, prev_raw = _step_single_date(
+            station, rain_series, current_date, last_raw, prev_raw,
+            client_rainfall, batch_state, source,
+        )
+        fetched_rain = audit["rainfall_mm"]
+        pred_raw_streamflow = last_raw
+        pred_delta_raw = pred_raw_streamflow - anchor_before
+
         trajectory.append({
             "date": current_str,
-            "anchor_streamflow": round(last_raw, 2),
+            "anchor_streamflow": round(anchor_before, 2),
             "rainfall_mm_fetched": round(fetched_rain, 2),
             "pred_delta_raw": round(pred_delta_raw, 2),
             "pred_raw_streamflow": round(pred_raw_streamflow, 2)
         })
-        
-        prev_raw = last_raw
-        last_raw = pred_raw_streamflow
+
         current_date += timedelta(days=1)
-        
-    # Rebuild final df_window for target_date to return correct debug_features
-    if df_window is None:
-        flow_rows_before = get_gauge_state(station_id, limit=3, before_date=target_date.isoformat())
-        if len(flow_rows_before) > 1:
-            if flow_rows_before[0]["date"] == target_date.isoformat():
-                last_raw_t = flow_rows_before[1]["raw_streamflow"]
-                prev_raw_t = flow_rows_before[2]["raw_streamflow"] if len(flow_rows_before) > 2 else last_raw_t
-            else:
-                last_raw_t = flow_rows_before[0]["raw_streamflow"]
-                prev_raw_t = flow_rows_before[1]["raw_streamflow"]
-        elif len(flow_rows_before) == 1:
-            if flow_rows_before[0]["date"] == target_date.isoformat():
-                last_raw_t = 0.0
-                prev_raw_t = 0.0
-            else:
-                last_raw_t = flow_rows_before[0]["raw_streamflow"]
-                prev_raw_t = last_raw_t
+
+    # Rebuild final df_window for target_date to return correct debug_features.
+    # Rows are now guaranteed persisted (gap + extension), so read back the
+    # two latest rows strictly before the target.
+    flow_rows_before = get_gauge_state(station_id, limit=3, before_date=target_date.isoformat())
+    if len(flow_rows_before) > 1:
+        if flow_rows_before[0]["date"] == target_date.isoformat():
+            last_raw_t = flow_rows_before[1]["raw_streamflow"]
+            prev_raw_t = flow_rows_before[2]["raw_streamflow"] if len(flow_rows_before) > 2 else last_raw_t
         else:
+            last_raw_t = flow_rows_before[0]["raw_streamflow"]
+            prev_raw_t = flow_rows_before[1]["raw_streamflow"]
+    elif len(flow_rows_before) == 1:
+        if flow_rows_before[0]["date"] == target_date.isoformat():
             last_raw_t = 0.0
             prev_raw_t = 0.0
-        df_window = build_feature_window(station, rain_series, last_raw_t, prev_raw_t, target_date)
+        else:
+            last_raw_t = flow_rows_before[0]["raw_streamflow"]
+            prev_raw_t = last_raw_t
+    else:
+        last_raw_t = 0.0
+        prev_raw_t = 0.0
+    df_window = build_feature_window(station, rain_series, last_raw_t, prev_raw_t, target_date)
 
     debug_features = df_window.iloc[-1].fillna(0).to_dict()
 
@@ -612,10 +793,27 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
         rain_mm = float(rain_series.get(pd.Timestamp(row_date), 0.0))
         rain_window.append({"date": row_date.isoformat(), "rainfall_mm": round(rain_mm, 2)})
 
+    # Answer the target from the now-persisted rows (works for past targets
+    # too — never an empty success).
+    target_str = target_date.isoformat()
+    target_row = query_one(
+        "SELECT raw_streamflow FROM gauge_state WHERE station_id = ? AND date = ?",
+        [station_id, target_str],
+    )
+    target_flow = float(target_row["raw_streamflow"]) if target_row else 0.0
+    before_rows = get_gauge_state(station_id, limit=1, before_date=target_str)
+    anchor_flow = float(before_rows[0]["raw_streamflow"]) if before_rows else 0.0
+
     return {
         "trajectory": trajectory,
         "debug_features": debug_features,
-        "rain_window": rain_window
+        "rain_window": rain_window,
+        "target": target_str,
+        "pred_raw_streamflow": round(target_flow, 2),
+        "pred_delta_raw": round(target_flow - anchor_flow, 2),
+        "anchor_streamflow": round(anchor_flow, 2),
+        "backfilled_dates": [a["date"] for a in gap_audits if a.get("computed")],
+        "backfilled": gap_audits,
     }
 
 
