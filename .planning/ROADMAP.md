@@ -23,4 +23,10 @@ Gates: code-review + ui-review.
 Stamp `model_version+db_date+generation_id`, `/api/admin/alert-webhook` via env, separate real `/predict` vs dummy `/api/predict`, replace `prompt()=="cro"` with rate-limit+confirm, wire one ProjectDetail flood page live.
 Gates: code-review + secure-phase + ui-review.
 
+## Phase 07-prediction-backfill-guarantee [DONE 2026-09-27]
+Every prediction call (agent or user) for a target date first computes anchor→today
+sequentially with per-date live dynamic features before answering the target.
+Helpers in `prediction_service.py`, IST branch in `/predict`, 11 new tests, 169/169 green.
+See `phases/07-prediction-backfill-guarantee/`.
+
 Each phase: SPEC.md → PLAN.md → VERIFICATION.md before code.

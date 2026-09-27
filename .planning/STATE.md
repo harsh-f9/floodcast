@@ -13,3 +13,17 @@ Fixed user-reported top-5 failure: guard CTE-alias allow, _collect error-truthin
 (graphs restored), container-local autoscroll, client_today end-to-end, names paired
 with IDs, reported queries as regression tests. 158/158 backend green, tsc+build clean,
 live top-5 verified (5 charts, staleness stated). See phases/06-chat-reliability/.
+
+## Phase 07-prediction-backfill-guarantee [DONE 2026-09-27]
+Every prediction call (agent tools + user POST /predict) for a target date first
+computes anchor→today sequentially with per-date live rainfall + window + chained
+model state, then answers/extends to target. Decisions: anchor = CDS download date
+(latest persisted row); today = portable IST (chat clock → +5:30 → system); rainfall
+= live attempt per date with 429 breaker + batch/db/fallback-zero provenance;
+past targets backfill through today then answer from persisted rows. Shared helpers
+`ensure_anchor_to_today/_step_single_date/_resolve_rainfall_for_date` in
+`prediction_service.py`; `/predict` branches on IST; agent tools unchanged (passthrough
+verified). 169/169 backend green (158 existing + 11 new in
+`backend/chat_agent/tests/test_backfill_guarantee.py`). See
+phases/07-prediction-backfill-guarantee/{SPEC,PLAN,VERIFICATION,LEARNINGS}.md.
+Prior phases' LEARNINGS.md files untouched.
