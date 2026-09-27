@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Download, Loader2, Send, X, Wrench } from "lucide-react";
+import { Bot, Check, Download, Loader2, Plus, Send, X, Wrench } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
   ResponsiveContainer,
@@ -22,20 +22,44 @@ interface ChartPayload {
   station_id: number;
   station_name: string;
   district: string;
+  label?: string;
+  unit?: string;
   thresholds: { watch: number; warning: number; danger: number; extreme: number };
   chart: ChartRow[];
   severity: string;
   peak_flow?: number;
   peak_date?: string;
 }
+interface Step {
+  id: string;
+  kind: "thinking" | "tool";
+  name?: string;
+  text?: string;
+  args?: Record<string, unknown>;
+  ok?: boolean;
+  latencyMs?: number;
+  error?: string;
+  running: boolean;
+}
 interface Msg {
   role: "user" | "assistant";
   content: string;
   charts?: ChartPayload[];
+  briefing?: string;
   trace?: { tool: string; args: Record<string, unknown>; ok: boolean; error: string }[];
+  steps?: Step[];
+  running?: boolean;
+  progress?: { done: number; total: number; note: string };
 }
 
-const QUICK = ["Predict Bijnor", "History of station 0", "Top 5 stations by streamflow", "Highest RP station"];
+const SUGGESTED = [
+  "Predict Bijnor",
+  "Forecast for station 92",
+  "Top 5 stations by streamflow",
+  "Highest RP station",
+  "Rainfall history of Lucknow",
+  "Sweep Bijnor stations",
+];
 
 // Black-and-white severity scale: light (calm) -> black (extreme).
 const SEV_STYLE: Record<string, string> = {
@@ -47,18 +71,61 @@ const SEV_STYLE: Record<string, string> = {
   UNKNOWN: "bg-white text-gray-500 border-gray-200",
 };
 
+function StepRow({ s }: { s: Step }) {
+  if (s.kind === "thinking") {
+    return (
+      <details className="text-[11px] text-gray-500" open={s.running}>
+        <summary className="cursor-pointer flex items-center gap-1.5 hover:text-black list-none">
+          {s.running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          <span className="italic">Thinking{s.running ? "…" : ""}</span>
+        </summary>
+        {s.text && <p className="mt-1 pl-4 whitespace-pre-wrap border-l-2 border-gray-200">{s.text}</p>}
+      </details>
+    );
+  }
+  return (
+    <div className="text-[11px]">
+      <div className="flex items-center gap-1.5 text-gray-700">
+        {s.running ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : s.ok ? (
+          <Check className="w-3 h-3 text-black" />
+        ) : (
+          <X className="w-3 h-3 text-black" />
+        )}
+        <span className="font-mono font-semibold">{s.name}</span>
+        {!s.running && s.latencyMs != null && <span className="text-gray-400">{s.latencyMs}ms</span>}
+        {!s.running && !s.ok && <span className="font-bold">failed</span>}
+      </div>
+      {(s.args && Object.keys(s.args).length > 0) || s.error ? (
+        <details className="mt-0.5 pl-4 text-gray-500">
+          <summary className="cursor-pointer hover:text-black">details</summary>
+          {s.args && Object.keys(s.args).length > 0 && (
+            <pre className="mt-1 font-mono bg-gray-50 rounded p-1.5 border border-gray-200 overflow-x-auto">
+              {JSON.stringify(s.args, null, 1).slice(0, 800)}
+            </pre>
+          )}
+          {s.error && <p className="mt-1 font-semibold text-black">{s.error}</p>}
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
 function ChartCard({ c }: { c: ChartPayload }) {
+  const unit = c.unit || "m³/s";
   const data = (c.chart || []).map((r) => ({
-    x: r.date.slice(5),
+    x: (r.date || "").slice(5),
     past: r.kind === "past" ? r.streamflow : null,
     forecast: r.kind === "forecast" ? r.streamflow : null,
   }));
   const t = c.thresholds || { watch: 0, warning: 0, danger: 0, extreme: 0 };
+  const title = c.label || `Stn ${c.station_id}${c.district ? ` · ${c.district}` : ""}`;
   return (
     <div className="rounded-lg bg-white border border-gray-200 p-2.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <p className="text-xs font-semibold text-black truncate">
-          Stn {c.station_id}{c.district ? ` · ${c.district}` : ""}
+          {title}
         </p>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${SEV_STYLE[c.severity] || SEV_STYLE.UNKNOWN}`}>
           {c.severity || "UNKNOWN"}
@@ -66,7 +133,7 @@ function ChartCard({ c }: { c: ChartPayload }) {
       </div>
       {c.peak_flow != null && (
         <p className="text-[11px] text-gray-600 mb-1.5">
-          Peak {c.peak_flow} m³/s on {c.peak_date}
+          Peak {c.peak_flow} {unit} on {c.peak_date}
         </p>
       )}
       <div className="h-[140px] w-full">
@@ -77,7 +144,7 @@ function ChartCard({ c }: { c: ChartPayload }) {
             <YAxis stroke="#737373" fontSize={9} tickLine={false} axisLine={false} />
             <ChartTooltip
               contentStyle={{ backgroundColor: "#fff", border: "1px solid #d4d4d4", borderRadius: 8, color: "#000", fontSize: 11 }}
-              formatter={(v: unknown) => [`${v} m³/s`, "Flow"]}
+              formatter={(v: unknown) => [`${v} ${unit}`, unit === "mm" ? "Rain" : "Flow"]}
             />
             {t.watch > 0 && <ReferenceLine y={t.watch} stroke="#a3a3a3" strokeDasharray="3 3" strokeWidth={1} />}
             {t.warning > 0 && <ReferenceLine y={t.warning} stroke="#737373" strokeDasharray="3 3" strokeWidth={1} />}
@@ -95,16 +162,17 @@ function ChartCard({ c }: { c: ChartPayload }) {
 // Same quoting pattern as the dashboard's Master Predict CSV export.
 function exportMessageCsv(m: Msg, idx: number) {
   const rows: string[][] = [
-    ["Station ID", "Station Name", "District", "Date", "Streamflow (m3/s)", "Kind", "Severity", "Peak Flow (m3/s)", "Peak Date"],
+    ["Station ID", "Station Name", "District", "Date", "Value", "Unit", "Kind", "Severity", "Peak Value", "Peak Date"],
   ];
   (m.charts || []).forEach((c) => {
     (c.chart || []).forEach((p) => {
       rows.push([
-        String(c.station_id),
-        c.station_name || "",
+        c.station_id === -1 ? "" : String(c.station_id),
+        c.label || c.station_name || "",
         c.district || "",
         p.date,
         p.streamflow == null ? "" : String(p.streamflow),
+        c.unit || "m³/s",
         p.kind,
         c.severity || "",
         c.peak_flow == null ? "" : String(c.peak_flow),
@@ -129,8 +197,14 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
-  const [model, setModel] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const newChat = () => {
+    // Backend is stateless (history travels with each request), so clearing
+    // the UI thread also clears everything the model sees.
+    setMsgs([]);
+    setInput("");
+  };
 
   useEffect(() => {
     fetch(getApiUrl("/api/chat/status"))
@@ -138,7 +212,6 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       .then((s) => {
         if (!s) return;
         setEnabled(!!s.enabled);
-        setModel(s.model || "");
       })
       .catch(() => {});
   }, []);
@@ -149,6 +222,68 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
 
   if (!enabled) return null;
 
+  const patchMsg = (idx: number, fn: (m: Msg) => Msg) =>
+    setMsgs((p) => p.map((m, j) => (j === idx ? fn(m) : m)));
+
+  const sendSync = async (history: { role: string; content: string }[], idx: number) => {
+    // Non-streaming fallback (also the path when jobs are unavailable).
+    const res = await fetch(getApiUrl("/api/chat"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history, horizon_days: 7 }),
+    });
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(`Request failed (HTTP ${res.status})`);
+    }
+    if (!res.ok) throw new Error(data?.detail || `Request failed (HTTP ${res.status})`);
+    patchMsg(idx, (m) => ({
+      ...m,
+      content: data.reply,
+      charts: data.charts || [],
+      briefing: data.briefing || undefined,
+      trace: data.tool_trace || [],
+      running: false,
+    }));
+  };
+
+  const stepsFromEvents = (events: any[]): Step[] => {
+    const steps: Step[] = [];
+    const byId = new Map<string, Step>();
+    events.forEach((evt, i) => {
+      if (evt.type === "thinking") {
+        steps.push({ id: `t${i}`, kind: "thinking", text: evt.text, running: false });
+      } else if (evt.type === "tool_start") {
+        const s: Step = { id: evt.id, kind: "tool", name: evt.name, args: evt.args, running: true };
+        byId.set(evt.id, s);
+        steps.push(s);
+      } else if (evt.type === "tool_end") {
+        const s = byId.get(evt.id);
+        if (s) {
+          s.running = false;
+          s.ok = evt.ok;
+          s.latencyMs = evt.latency_ms;
+          s.error = evt.error || undefined;
+        } else {
+          steps.push({ id: evt.id, kind: "tool", name: evt.name || "tool", running: false, ok: evt.ok, error: evt.error || undefined });
+        }
+      } else if (evt.type === "summary_start") {
+        const s: Step = { id: "summary", kind: "thinking", text: "Summarizing results…", running: true };
+        byId.set("summary", s);
+        steps.push(s);
+      } else if (evt.type === "summary_done") {
+        const s = byId.get("summary");
+        if (s) {
+          s.running = false;
+          s.text = undefined;
+        }
+      }
+    });
+    return steps;
+  };
+
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -156,24 +291,80 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
     setMsgs(next);
     setInput("");
     setLoading(true);
+    const history = next
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role, content: m.content }));
+    const idx = next.length; // assistant placeholder position
+    setMsgs((p) => [...p, { role: "assistant", content: "", steps: [], running: true }]);
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     try {
-      const history = next
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }));
-      const res = await fetch(getApiUrl("/api/chat"), {
+      // Background job first: survives multi-minute sweeps; poll for timeline.
+      const sub = await fetch(getApiUrl("/api/chat/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, horizon_days: 7 }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || "Request failed");
-      setMsgs((p) => [
-        ...p,
-        { role: "assistant", content: data.reply, charts: data.charts || [], trace: data.tool_trace || [] },
-      ]);
+      if (!sub.ok) throw new Error("jobs unavailable");
+      const { job_id } = await sub.json();
+      let fails = 0;
+      const deadline = Date.now() + 10 * 60 * 1000;
+      for (;;) {
+        await sleep(1500);
+        let st: any;
+        try {
+          const pr = await fetch(getApiUrl(`/api/chat/jobs/${job_id}`));
+          if (!pr.ok) throw new Error("poll failed");
+          st = await pr.json();
+        } catch {
+          if (++fails > 8) throw new Error("lost contact with background job");
+          continue;
+        }
+        fails = 0;
+        patchMsg(idx, (m) => ({
+          ...m,
+          steps: stepsFromEvents(st.events || []),
+          progress: { done: st.progress_done || 0, total: st.progress_total || 0, note: st.progress_note || "" },
+        }));
+        if (st.status === "done") {
+          const r = st.result || {};
+          patchMsg(idx, (m) => ({
+            ...m,
+            content: r.reply || "",
+            charts: r.charts || [],
+            briefing: r.briefing || undefined,
+            trace: r.tool_trace || [],
+            running: false,
+            progress: undefined,
+          }));
+          break;
+        }
+        if (st.status === "failed" || st.status === "cancelled") {
+          patchMsg(idx, (m) => ({ ...m, content: `Error: ${st.error || `job ${st.status}`}`, running: false, progress: undefined }));
+          break;
+        }
+        if (Date.now() > deadline) {
+          patchMsg(idx, (m) => ({
+            ...m,
+            content: `${m.content ? m.content + "\n\n" : ""}Still running in the background (job ${job_id}) — it keeps its progress; ask again later for the result.`,
+            running: false,
+            progress: undefined,
+          }));
+          break;
+        }
+      }
     } catch (e) {
-      setMsgs((p) => [...p, { role: "assistant", content: `Error: ${(e as Error).message}` }]);
+      // Sync fallback ONLY when the job never started (submit failed).
+      // Never re-run after a successful submit: the job keeps running.
+      if ((e as Error).message === "jobs unavailable") {
+        try {
+          await sendSync(history, idx);
+        } catch (e2) {
+          patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e2 as Error).message}`, running: false, progress: undefined }));
+        }
+      } else {
+        patchMsg(idx, (m) => ({ ...m, content: `Error: ${(e as Error).message}`, running: false, progress: undefined }));
+      }
     } finally {
       setLoading(false);
     }
@@ -182,21 +373,21 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   return (
     <div className={embedded ? "flex flex-col h-full w-full bg-white" : "flex flex-col h-full w-full bg-white"}>
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-200 bg-black">
-        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-          <Bot className="w-4 h-4 text-black" />
+      <div className="relative flex items-center justify-center gap-2.5 px-4 py-4 border-b border-gray-200 bg-black">
+        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0">
+          <Bot className="w-5 h-5 text-black" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white leading-tight">Flood Assistant</p>
-          <p className="text-[11px] text-gray-400 truncate">
-            predictions + history only{model ? ` · ${model}` : ""}
-          </p>
-        </div>
-        {onClose && (
-          <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
-            <X className="w-4 h-4" />
+        <p className="text-xl font-bold text-white leading-tight tracking-tight">Flood Assistant</p>
+        <div className="absolute right-3 flex items-center gap-1">
+          <button onClick={newChat} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="New chat">
+            <Plus className="w-4 h-4" />
           </button>
-        )}
+          {onClose && (
+            <button onClick={onClose} className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10" title="Close">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -204,14 +395,14 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
         {msgs.length === 0 && (
           <div className="text-center mt-6">
             <Bot className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-700 mb-1">Ask for district forecasts or station history.</p>
+            <p className="text-sm text-gray-700 mb-1">Ask for forecasts, history, or analytics.</p>
             <p className="text-xs text-gray-400 mb-4">I can't answer anything else.</p>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {QUICK.map((q) => (
+            <div className="grid grid-cols-3 gap-2">
+              {SUGGESTED.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="aspect-square rounded-2xl border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-black transition-colors text-[11px] font-semibold leading-tight p-2 flex items-center justify-center"
                 >
                   {q}
                 </button>
@@ -221,6 +412,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
         )}
         {msgs.map((m, i) => (
           <div key={i} className={`flex flex-col gap-1.5 ${m.role === "user" ? "items-end" : "items-start"}`}>
+            {(m.content || m.role === "user") && (
             <div
               className={`max-w-[95%] px-3 py-2 rounded-2xl text-[13px] leading-relaxed ${
                 m.role === "user"
@@ -236,6 +428,27 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
                 <span className="whitespace-pre-wrap">{m.content}</span>
               )}
             </div>
+            )}
+            {m.role === "assistant" && m.steps && m.steps.length > 0 && (
+              <div className="w-full max-w-[95%] flex flex-col gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-2">
+                {m.steps.map((s) => (
+                  <StepRow key={s.id} s={s} />
+                ))}
+              </div>
+            )}
+            {m.running && m.progress && m.progress.total > 0 && (
+              <div className="w-full max-w-[95%]">
+                <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full bg-black transition-all"
+                    style={{ width: `${Math.min(100, Math.round((m.progress.done / m.progress.total) * 100))}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {m.progress.done}/{m.progress.total} stations{m.progress.note ? ` · ${m.progress.note}` : ""}
+                </p>
+              </div>
+            )}
             {m.role === "assistant" && (
               <button
                 onClick={() => exportMessageCsv(m, i)}
@@ -260,10 +473,16 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
                 </div>
               </details>
             )}
+            {m.briefing && (
+              <div className="w-full max-w-[95%] rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">District briefing</p>
+                <p className="text-[12px] leading-relaxed text-black">{m.briefing}</p>
+              </div>
+            )}
             {m.charts && m.charts.length > 0 && (
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {m.charts.map((c) => (
-                  <ChartCard key={c.station_id} c={c} />
+                {m.charts.map((c, j) => (
+                  <ChartCard key={`${c.station_id}-${c.label || c.district || ""}-${j}`} c={c} />
                 ))}
               </div>
             )}

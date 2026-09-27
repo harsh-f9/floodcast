@@ -17,6 +17,8 @@ class ChartPayload(BaseModel):
     station_id: int
     station_name: str = ""
     district: str = ""
+    label: str = ""
+    unit: str = "m³/s"
     thresholds: dict = {}
     chart: list[dict] = []
     severity: str = ""
@@ -32,6 +34,7 @@ class ToolTrace(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    request_id: str = ""
     reply: str
     raw_reply: str = ""
     tool_trace: list[ToolTrace] = []
@@ -50,5 +53,25 @@ class StatusResponse(BaseModel):
     llm_configured: bool
     model: str
     districts: int
+
+    model_config = {"extra": "ignore"}
+
+
+class JobSubmitResponse(BaseModel):
+    job_id: str
+
+    model_config = {"extra": "ignore"}
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str = ""
+    progress_done: int = 0
+    progress_total: int = 0
+    progress_note: str = ""
+    question: str = ""
+    events: list[dict] = []
+    result: Optional[dict] = None
+    error: str = ""
 
     model_config = {"extra": "ignore"}

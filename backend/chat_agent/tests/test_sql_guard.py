@@ -71,6 +71,25 @@ class TestValidAllowed(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIn("LIMIT 100", norm)
 
+    def test_district_gold_queries_allowed(self):
+        gold = [
+            "SELECT d.district, s.station_id, MAX(g.raw_streamflow) AS peak FROM station_static s "
+            "JOIN gauge_state g ON g.station_id = s.station_id "
+            "JOIN station_district d ON d.station_id = s.station_id "
+            "WHERE d.district = 'Agra' GROUP BY d.district, s.station_id ORDER BY peak DESC LIMIT 5",
+            "SELECT g.date, g.raw_streamflow, s.rp_2, s.rp_5, s.rp_15, s.rp_20 FROM gauge_state g "
+            "JOIN station_static s ON s.station_id = g.station_id "
+            "WHERE g.station_id = 92 ORDER BY g.date DESC LIMIT 7",
+            "SELECT s.station_id, s.station_name, s.rp_20, d.district, d.location_name FROM station_static s "
+            "JOIN station_district d ON d.station_id = s.station_id ORDER BY s.rp_20 DESC LIMIT 5",
+            "SELECT DISTINCT district FROM station_district ORDER BY district LIMIT 100",
+        ]
+        for q in gold:
+            with self.subTest(sql=q[:60]):
+                ok, errs, norm = validate_sql(q)
+                self.assertTrue(ok, f"{q} -> {errs}")
+                self.assertTrue(norm)
+
     def test_comment_hidden_attack_rendered_inert(self):
         # The DROP lives inside a comment: stripping removes the attack and
         # the benign remainder runs. The attack must not survive.

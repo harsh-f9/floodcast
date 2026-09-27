@@ -47,13 +47,63 @@ class TestIntentParse(unittest.TestCase):
 
     def test_top_flow_sql(self):
         i = agent.parse_intent("run for all stations, top 5 highest streamflow, graphs past 3 days each")
-        self.assertEqual(i["kind"], "sql_top")
+        self.assertEqual(i["kind"], "sweep")
         self.assertEqual(i["days"], 3)
         self.assertEqual(i["top_n"], 5)
+
+    def test_top_flow_sql_without_all(self):
+        i = agent.parse_intent("top 5 highest streamflow")
+        self.assertEqual(i["kind"], "sql_top")
 
     def test_max_rp_sql(self):
         i = agent.parse_intent("which station has highest rp")
         self.assertEqual(i["kind"], "sql_rp")
+
+    def test_predict_station_routes_to_model(self):
+        i = agent.parse_intent("forecast for station 92")
+        self.assertEqual(i["kind"], "predict_station")
+        self.assertEqual(i["station_id"], 92)
+
+    def test_save_insert_verbs_route_to_predict(self):
+        i = agent.parse_intent("save future predictions for station 92")
+        self.assertEqual(i["kind"], "predict_station")
+        i = agent.parse_intent("insert 7-day forecast for Bijnor")
+        self.assertEqual(i["kind"], "predict")
+        self.assertTrue(agent.in_scope("please store the forecast for station 5"))
+
+    def test_explicit_target_date_parsed(self):
+        i = agent.parse_intent("predict station 92 on 2026-09-29")
+        self.assertEqual(i["kind"], "predict_station")
+        self.assertEqual(i["target_date"], "2026-09-29")
+        i = agent.parse_intent("insert forecast for Bijnor for 2026-09-30")
+        self.assertEqual(i["kind"], "predict")
+        self.assertEqual(i["target_date"], "2026-09-30")
+
+    def test_bad_date_ignored(self):
+        self.assertIsNone(agent._parse_target_date("predict station 92 on 2026-13-45"))
+        self.assertIsNone(agent._parse_target_date("predict Bijnor"))
+
+    def test_history_station_stays_history(self):
+        i = agent.parse_intent("history of station 92")
+        self.assertEqual(i["kind"], "history")
+        self.assertEqual(i["station_id"], 92)
+
+    def test_predict_district_unaffected(self):
+        i = agent.parse_intent("predict Agra")
+        self.assertEqual(i["kind"], "predict")
+        self.assertIn("Agra", i["districts"])
+
+    def test_sweep_all_stations(self):
+        i = agent.parse_intent("sweep all stations and forecast next 3 days")
+        self.assertEqual(i["kind"], "sweep")
+
+    def test_sweep_statewide_top(self):
+        i = agent.parse_intent("top 5 stations state-wide by streamflow")
+        self.assertEqual(i["kind"], "sweep")
+
+    def test_sweep_keyword_alone(self):
+        i = agent.parse_intent("Sweep Bijnor stations")
+        self.assertEqual(i["kind"], "sweep")
 
     def test_none(self):
         i = agent.parse_intent("flood")
@@ -296,6 +346,32 @@ class TestSummarizerLayer(unittest.TestCase):
         self.assertFalse(used)
         self.assertEqual(text, "raw")
 
+    def test_bad_tool_args_json_repaired(self):
+        bad_call = {"choices": [{"message": {
+            "content": "",
+            "tool_calls": [{"id": "c1", "function": {"name": "run_sql", "arguments": "{oops"}}],
+        }}]}
+        good_call = {"choices": [{"message": {"content": "done", "tool_calls": []}}]}
+        M = agent.model_name()
+        with patch.object(agent, "llm_configured", return_value=True), \
+             patch.object(agent, "_post_chat",
+                          side_effect=[(bad_call, M), (good_call, M),
+                                       (good_call, M)]):
+            out = agent.run_agent([{"role": "user", "content": "how many stations exist"}])
+        self.assertTrue(out["llm_used"])
+        self.assertEqual(out["reply"], "done")
+
+    def test_template_savers_line(self):
+        charts = [{
+            "station_id": 5, "district": "X", "peak_flow": 3.0, "peak_date": "2026-01-02",
+            "severity": "NORMAL",
+            "chart": [{"date": "2026-01-02", "streamflow": 3.0, "kind": "past"}],
+        }]
+        text = agent._template_reply(
+            [{"tool": "sweep_stations", "args": {}, "ok": True, "error": ""}],
+            charts, [], [])
+        self.assertIn("Forecasts saved", text)
+
 
 class TestPaidRescue(unittest.TestCase):
     def _resp(self, status, payload=None):
@@ -365,6 +441,77 @@ class TestPaidRescue(unittest.TestCase):
                 agent._post_chat([{"role": "user", "content": "x"}], None, agent.model_name(), 10)
         self.assertEqual(post.call_count,
                          agent.PRIMARY_ATTEMPTS + agent.FALLBACK_ATTEMPTS)
+
+
+class TestThinkingAndEvents(unittest.TestCase):
+    def test_extract_thinking(self):
+        msg = {
+            "reasoning": "  plan: check db first  ",
+            "reasoning_details": [
+                {"type": "reasoning.text", "text": "detail text"},
+                {"type": "reasoning.summary", "summary": "short sum"},
+                {"type": "reasoning.encrypted", "data": "SECRET"},
+            ],
+        }
+        text = agent._extract_thinking(msg)
+        self.assertIn("plan: check db first", text)
+        self.assertIn("detail text", text)
+        self.assertIn("short sum", text)
+        self.assertNotIn("SECRET", text)
+
+    def test_extract_thinking_empty(self):
+        self.assertEqual(agent._extract_thinking({}), "")
+        self.assertEqual(agent._extract_thinking({"reasoning_details": [{"type": "other"}]}), "")
+
+    def test_event_order_no_key(self):
+        seen = []
+        with patch.object(agent, "llm_configured", return_value=False):
+            out = agent.run_agent(
+                [{"role": "user", "content": "history of station 0"}],
+                on_event=seen.append,
+            )
+        kinds = [e["type"] for e in seen]
+        self.assertEqual(kinds[0], "run_started")
+        self.assertIn("intent", kinds)
+        self.assertIn("tool_start", kinds)
+        self.assertIn("tool_end", kinds)
+        self.assertEqual(kinds[-1], "run_finished")
+        start = next(e for e in seen if e["type"] == "tool_start")
+        end = next(e for e in seen if e["type"] == "tool_end")
+        self.assertEqual(start["id"], end["id"])
+        self.assertEqual(start["name"], "station_history")
+        self.assertTrue(end["ok"])
+        self.assertEqual(len(out["charts"]), 1)
+
+    def test_reasoning_400_disables_globally(self):
+        import copy
+        import httpx
+        prev = agent._REASONING_OK
+        agent._REASONING_OK = True
+        try:
+            ok_resp = httpx.Response(
+                200, json={"choices": [{"message": {"content": "done", "tool_calls": []}}]},
+                request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"))
+            bad_resp = httpx.Response(
+                400, json={"error": {"message": "reasoning.effort not supported"}},
+                request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"))
+            sent = []
+
+            def _fake_post(*a, **k):
+                sent.append(copy.deepcopy(k["json"]))
+                return [bad_resp, ok_resp][len(sent) - 1]
+
+            with patch("time.sleep"), patch("httpx.post", side_effect=_fake_post) as post:
+                data, served = agent._post_chat(
+                    [{"role": "user", "content": "x"}], [{"type": "function", "function": {"name": "t"}}],
+                    agent.model_name(), 10)
+            self.assertEqual(data["choices"][0]["message"]["content"], "done")
+            self.assertFalse(agent._REASONING_OK)
+            self.assertEqual(post.call_count, 2)
+            self.assertIn("reasoning", sent[0])
+            self.assertNotIn("reasoning", sent[1])
+        finally:
+            agent._REASONING_OK = prev
 
 
 if __name__ == "__main__":

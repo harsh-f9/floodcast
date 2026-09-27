@@ -94,6 +94,16 @@ def startup():
         import threading
         threading.Thread(target=_auto_anchor, daemon=True, name="AnchorThread").start()
 
+        # 5. Resume interrupted chat-agent jobs (re-queues, does not block boot).
+        try:
+            try:
+                from chat_agent.jobs import resume_interrupted
+            except ImportError:
+                from backend.chat_agent.jobs import resume_interrupted
+            resume_interrupted()
+        except Exception as e:
+            print(f"chat jobs resume skipped: {e}")
+
         # 5. Asynchronously launch historical missing predictions auto-sync
         # import threading
         # from prediction_service import sync_historical_predictions
@@ -115,6 +125,14 @@ def shutdown():
     """Clean up scheduler on shutdown."""
     try:
         stop_scheduler()
+    except Exception:
+        pass
+    try:
+        try:
+            from chat_agent.jobs import shutdown as _shutdown_jobs
+        except ImportError:
+            from backend.chat_agent.jobs import shutdown as _shutdown_jobs
+        _shutdown_jobs()
     except Exception:
         pass
 

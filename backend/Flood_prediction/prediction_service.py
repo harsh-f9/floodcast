@@ -456,10 +456,13 @@ def run_prediction_for_station(station_id: int, target_date: date, client_rainfa
 
 # ── Sequential Future Prediction (In-Memory Trajectory) ────────────────
 
-def predict_future_streamflow(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None) -> dict:
+def predict_future_streamflow(station_id: int, target_date: date, client_rainfall: dict[str, float] | None = None, source: str | None = None) -> dict:
     """
     Predict future streamflow recursively, dynamically filling gaps and saving predictions.
     Fetches rainfall forecasts dynamically and chains predictions.
+
+    source: optional provenance tag written on inserted gauge_state rows
+    (e.g. 'forecast'); None preserves the legacy untagged insert.
     """
     from database import (
         get_station, get_rainfall_history, get_gauge_state,
@@ -513,7 +516,7 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
                 x_dynamic, x_flat = preprocess_window(df_window, predictor)
                 result = predictor.predict(x_dynamic, x_flat, last_raw)
                 pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
-                insert_gauge_state(station_id, current_str, pred_raw_streamflow)
+                insert_gauge_state(station_id, current_str, pred_raw_streamflow, source)
             
             rain_series[pd.Timestamp(current_date)] = fetched_rain
             prev_raw = last_raw
@@ -563,7 +566,7 @@ def predict_future_streamflow(station_id: int, target_date: date, client_rainfal
             result = predictor.predict(x_dynamic, x_flat, last_raw)
             pred_raw_streamflow = clamp_flow(result["pred_raw_streamflow"])
             pred_delta_raw = pred_raw_streamflow - last_raw
-            insert_gauge_state(station_id, current_str, pred_raw_streamflow)
+            insert_gauge_state(station_id, current_str, pred_raw_streamflow, source)
             
         rain_series[pd.Timestamp(current_date)] = fetched_rain
         
