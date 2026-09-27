@@ -196,6 +196,47 @@ class TestChatRouter(unittest.TestCase):
         self.assertEqual(r.status_code, 429)
         self.assertTrue(r.json()["detail"]["suggest_jobs"])
 
+    def test_client_today_forwarded(self):
+        seen = {}
+
+        def fake_run(messages, horizon_days=7, request_id="", on_event=None, client_today=""):
+            seen.update(messages=messages, horizon_days=horizon_days,
+                        request_id=request_id, client_today=client_today)
+            return {"reply": "ok", "raw_reply": "ok", "tool_trace": [], "charts": [],
+                    "briefing": None, "model": "", "llm_used": False,
+                    "summary_used": False, "summary_model": "", "latency_s": 0.0}
+
+        import chat_agent.router as _router
+
+        with patch.object(_router, "run_agent", side_effect=fake_run):
+            r = self.client.post(
+                "/api/chat",
+                json={"messages": [{"role": "user", "content": "hi"}],
+                      "client_today": "2026-09-27"},
+            )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(seen["client_today"], "2026-09-27")
+
+    def test_client_today_unvalidated_but_harmless(self):
+        seen = {}
+
+        def fake_run(messages, horizon_days=7, request_id="", on_event=None, client_today=""):
+            seen["client_today"] = client_today
+            return {"reply": "ok", "raw_reply": "ok", "tool_trace": [], "charts": [],
+                    "briefing": None, "model": "", "llm_used": False,
+                    "summary_used": False, "summary_model": "", "latency_s": 0.0}
+
+        import chat_agent.router as _router
+
+        with patch.object(_router, "run_agent", side_effect=fake_run):
+            r = self.client.post(
+                "/api/chat",
+                json={"messages": [{"role": "user", "content": "hi"}],
+                      "client_today": "garbage!!"},
+            )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(seen["client_today"], "garbage!!")
+
     def test_job_submit_kill_switch(self):
         kill_switch.CHAT_ENABLED = False
         r = self.client.post(

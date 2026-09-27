@@ -52,6 +52,9 @@ Rules:
 - Never invent streamflow numbers, dates, severities, or station ids. If a tool was not called, say you cannot answer.
 - If the user asks anything outside flood predictions / station history / gauge listings / database analytics, reply exactly: I can't answer that — I can only show flood predictions and station history.
 - Keep replies short. Always name station ids, dates, and severity labels returned by the tools.
+- Whenever you mention a station id (e.g. 92), always pair it with its
+  station_name right beside it (e.g. "station 92 (hybas_4120864240)"). Never
+  print a bare numeric id or a bare hybas_* id without its counterpart.
 - District names must match tool results; never guess spellings.
 - For cross-station analytics (top-N, highest/lowest, comparisons, history ranges) write SQLite with run_sql:
   single SELECT only, explicit columns (never *), LIMIT <= 100. If run_sql
@@ -85,18 +88,19 @@ SYSTEM_PROMPT_TEMPLATE = SYSTEM_PROMPT
 
 
 def build_system_prompt() -> str:
-    """Per-request prompt: frozen template + schema + today's date (IST).
+    """Per-request prompt: frozen template + schema + effective date.
 
     The date line is gated by the CHAT_DATE_IN_PROMPT flag; without it the
-    model has no clock and mis-anchors "past few days".
+    model has no clock and mis-anchors "past few days". The date comes from
+    the clock override (validated client date) or server IST.
     """
     from . import flags as _flags
-    from .tools import today_ist
+    from .clock import today_ist as _today
 
     prompt = SYSTEM_PROMPT_TEMPLATE.replace("{schema}", schema_prompt())
     if _flags.date_in_prompt():
         prompt += (
-            f"\nToday is {today_ist().isoformat()} (Asia/Kolkata). "
+            f"\nToday is {_today().isoformat()} (user-local date). "
             "Every tool result carries its own anchor date — use it, and always "
             "tell the user when data ends before today."
         )
@@ -341,9 +345,12 @@ def _summarize(user_text: str, reply: str, charts: list, briefings: list) -> tup
     for n, c in enumerate(charts[:6], 1):
         pts = c.get("chart", []) or []
         dates = [p["date"] for p in pts if p.get("date")]
+        name = c.get("station_name", "") or ""
+        who = f"station {c.get('station_id')}" + (f" ({name})" if name else "")
         desc.append(
-            f"[Chart {n}] station {c.get('station_id')} ({c.get('district', '')}), "
-            f"severity {c.get('severity', '')}, peak {c.get('peak_flow')} m3/s on "
+            f"[Chart {n}] {who} [{c.get('district', '')}], "
+            f"severity {c.get('severity', '')}, peak {c.get('peak_flow')} "
+            f"{c.get('unit', 'm³/s')} on "
             f"{c.get('peak_date', '')}, {len(pts)} points"
             + (f" ({dates[0]}..{dates[-1]})" if dates else "")
         )
@@ -371,12 +378,13 @@ def _summarize(user_text: str, reply: str, charts: list, briefings: list) -> tup
 
 
 def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
-              on_event=None) -> dict:
+              on_event=None, client_today: str = "") -> dict:
     """Full loop. messages = [{role, content}] with last = current user query.
 
     on_event(evt) receives live step events for SSE streaming:
     run_started/intent/round_start/thinking/tool_start/tool_end/
     summary_start/summary_done/run_finished. Never raises.
+    client_today (YYYY-MM-DD, validated) anchors prompt + staleness math.
     """
     if request_id:
         from .log import bind as _bind
@@ -393,14 +401,21 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
 
     t0 = time.time()
     user_text = messages[-1]["content"] if messages else ""
+    from .clock import reset_today as _reset_clock
+    from .clock import set_today as _set_clock
+    from .clock import today_ist as _today
+
+    _clock_token = _set_clock(client_today)
+    effective_today = _today().isoformat()
     event("chat.request", query=user_text[:300], history_n=len(messages),
-          horizon_days=horizon_days)
+          horizon_days=horizon_days, today=effective_today)
     _emit("run_started", query=user_text[:300])
 
     # L0: scope gate — no LLM cost for random questions.
     if not in_scope(user_text):
         event("chat.scope_reject", query=user_text[:200])
         _emit("run_finished", status="refused")
+        _reset_clock(_clock_token)
         return {
             "reply": FALLBACK_REPLY, "raw_reply": FALLBACK_REPLY,
             "tool_trace": [], "charts": [],
@@ -410,6 +425,7 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
         }
     if re.match(r"^\s*(hi|hello|hey|namaste|help)\s*[?.!]*\s*$", user_text, re.IGNORECASE):
         _emit("run_finished", status="capabilities")
+        _reset_clock(_clock_token)
         return {
             "reply": capability_reply(), "raw_reply": capability_reply(),
             "tool_trace": [], "charts": [],
@@ -456,7 +472,9 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
             return {"error": str(e)[:300]}
 
     def _collect(tool: str, out: dict):
-        if not isinstance(out, dict) or "error" in out:
+        # execute_sql always carries an "error" key ("" on success), so only
+        # skip on truthy errors — key presence alone drops every SQL result.
+        if not isinstance(out, dict) or out.get("error"):
             return
         if tool == "run_sql":
             rows = out.get("rows", []) or []
@@ -683,6 +701,7 @@ def run_agent(messages: list, horizon_days: int = 7, request_id: str = "",
           summary_used=summary_used, summary_model=summary_model,
           latency_s=latency)
     _emit("run_finished", status="ok", charts_n=len(charts), tools_n=len(trace))
+    _reset_clock(_clock_token)
     return {
         "reply": reply,
         "raw_reply": raw_reply,
@@ -714,9 +733,11 @@ def _template_reply(trace: list, charts: list, briefings: list, tables: list | N
     for c in charts[:6]:
         pts = c.get("chart") or []
         saved = sorted({p["date"] for p in pts if p.get("kind") == "forecast"})
+        cname = c.get("station_name", "") or ""
+        who = f"Station {c['station_id']}" + (f" ({cname})" if cname else "")
         parts.append(
-            f"Station {c['station_id']} ({c.get('district', '')}): "
-            f"peak {c.get('peak_flow')} m³/s on {c.get('peak_date')} [{c.get('severity')}], "
+            f"{who} ({c.get('district', '')}): "
+            f"peak {c.get('peak_flow')} {c.get('unit', 'm³/s')} on {c.get('peak_date')} [{c.get('severity')}], "
             f"{len(pts)} chart points."
             + (f" Saved {len(saved)} forecast rows to gauge_state ({saved[0]}..{saved[-1]})."
                if saved else "")

@@ -70,6 +70,7 @@ if _HAS_FASTAPI:
                     horizon_days=req.horizon_days,
                     request_id=rid,
                     on_event=q.put,
+                    client_today=req.client_today,
                 )
                 q.put({"type": "result", "result": {
                     "request_id": rid,
@@ -123,6 +124,7 @@ if _HAS_FASTAPI:
             out = run_agent(
                 [{"role": m.role, "content": m.content} for m in req.messages],
                 horizon_days=req.horizon_days,
+                client_today=req.client_today,
             )
         except ValueError as e:
             if "background job" in str(e):
@@ -161,6 +163,7 @@ if _HAS_FASTAPI:
             job_id = _jobs.submit(
                 [{"role": m.role, "content": m.content} for m in req.messages],
                 horizon_days=req.horizon_days,
+                client_today=req.client_today,
             )
         except _jobs.QueueFullError as e:
             raise HTTPException(status_code=429, detail={"message": str(e),

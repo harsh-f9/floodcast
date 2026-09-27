@@ -217,6 +217,22 @@ class TestLLMPath(unittest.TestCase):
 
 
 class TestDeterministicSQLPath(unittest.TestCase):
+    def test_run_sql_success_collects_charts(self):
+        # Regression (Phase 06): execute_sql always carries "error" ("" on
+        # success); _collect must not drop successful SQL results.
+        from chat_agent.tools import run_sql
+
+        out = run_sql(
+            "SELECT gs.station_id, gs.raw_streamflow, gs.date "
+            "FROM gauge_state gs ORDER BY gs.raw_streamflow DESC LIMIT 5")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["error"], "")
+        from chat_agent.tools import charts_from_rows
+
+        cards = charts_from_rows(out["rows"], out["columns"])
+        self.assertEqual(len(cards), 5)
+        self.assertTrue(all(len(c["chart"]) >= 1 for c in cards))
+
     def test_top5_no_key_with_graphs(self):
         with patch.object(agent, "llm_configured", return_value=False):
             out = agent.run_agent([{
@@ -328,6 +344,17 @@ class TestSummarizerLayer(unittest.TestCase):
                           side_effect=AssertionError("no LLM call expected")):
             out = agent.run_agent([{"role": "user", "content": "tell me a joke"}])
         self.assertFalse(out["summary_used"])
+
+    def test_template_pairs_ids_with_names(self):
+        charts = [{
+            "station_id": 92, "station_name": "hybas_4120864240", "district": "Agra",
+            "peak_flow": 10.0, "peak_date": "2026-09-24", "severity": "NORMAL", "unit": "m³/s",
+            "chart": [{"date": "2026-09-24", "streamflow": 10.0, "kind": "past"}],
+        }]
+        text = agent._template_reply(
+            [{"tool": "station_history", "args": {}, "ok": True, "error": ""}],
+            charts, [], [])
+        self.assertIn("92 (hybas_4120864240)", text)
 
     def test_empty_summary_retried_once(self):
         empty = ({"choices": [{"message": {"content": "  ", "tool_calls": []}}]}, agent.summary_model_name())

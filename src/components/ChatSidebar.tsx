@@ -198,6 +198,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
 
   const newChat = () => {
     // Backend is stateless (history travels with each request), so clearing
@@ -217,7 +218,13 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll the messages pane only (never the whole page), and only when
+    // the user is already near the bottom — streaming thinking/tool events
+    // must not yank a scrolled-up view.
+    const box = scrollBoxRef.current;
+    if (!box) return;
+    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+    if (nearBottom) box.scrollTop = box.scrollHeight;
   }, [msgs, loading]);
 
   if (!enabled) return null;
@@ -225,12 +232,18 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
   const patchMsg = (idx: number, fn: (m: Msg) => Msg) =>
     setMsgs((p) => p.map((m, j) => (j === idx ? fn(m) : m)));
 
+  const clientToday = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
   const sendSync = async (history: { role: string; content: string }[], idx: number) => {
     // Non-streaming fallback (also the path when jobs are unavailable).
     const res = await fetch(getApiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history, horizon_days: 7 }),
+      body: JSON.stringify({ messages: history, horizon_days: 7, client_today: clientToday() }),
     });
     let data: any = null;
     try {
@@ -303,7 +316,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       const sub = await fetch(getApiUrl("/api/chat/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, horizon_days: 7 }),
+        body: JSON.stringify({ messages: history, horizon_days: 7, client_today: clientToday() }),
       });
       if (!sub.ok) throw new Error("jobs unavailable");
       const { job_id } = await sub.json();
@@ -391,7 +404,7 @@ export default function ChatSidebar({ embedded, onClose }: { embedded?: boolean;
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4 flex flex-col gap-3 bg-white">
+      <div ref={scrollBoxRef} className="flex-1 overflow-y-auto px-3.5 py-4 flex flex-col gap-3 bg-white">
         {msgs.length === 0 && (
           <div className="text-center mt-6">
             <Bot className="w-10 h-10 text-gray-300 mx-auto mb-3" />
