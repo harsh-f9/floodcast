@@ -3,21 +3,18 @@ import { User } from "lucide-react";
 
 const Team = () => {
   const teamMembers = [
-    { name: "Sahil Rafaliya", role: "M.Sc. Data Science", photo: "/team-photos/sahil.png", linkedin: "https://www.linkedin.com/in/sahil-rafaliya-869210300/" },
-    { name: "Srishti Garg", role: "M.Sc. Data Science", photo: "/team-photos/srishti.jpg", linkedin: "https://www.linkedin.com/in/srishti-garg-6211a81ba/" },
-    { name: "Rajesh", role: "M.Sc. Data Science", photo: null, linkedin: "#" },
+    { name: "Harsh Jain", role: "M.Sc. AI & ML", photo: "/team-photos/Harsh.png", linkedin: "https://www.linkedin.com/in/harshf9/" },
+    { name: "Sridip Basu", role: "M.Sc. AI & ML", photo: "/team-photos/sridip-basu.png", linkedin: "https://www.linkedin.com/in/sridip-basu/" },
     { name: "Debayan Bandyopadhyay", role: "M.Sc. Data Science", photo: "/team-photos/Debayan.png", linkedin: "https://www.linkedin.com/in/debayan-bandyopadhyay-734b66247/" },
     { name: "Tarun Rai", role: "M.Sc. Data Science", photo: "/team-photos/Tarun.png", linkedin: "https://www.linkedin.com/in/tarunrai21/" },
     { name: "Gunjan", role: "M.Sc. Data Science", photo: "/team-photos/Gunjan.png", linkedin: "https://www.linkedin.com/in/gunjan-bansal-0b09a3251/" },
     { name: "Rohit Kumar Meena", role: "M.Sc. Data Science", photo: "/team-photos/Rohit.png", linkedin: "https://www.linkedin.com/in/rohit-kumar-meena-b09133380/" },
     { name: "Urmila Saini", role: "M.Sc. Data Science", photo: "/team-photos/Urmilla.png", linkedin: "https://www.linkedin.com/in/urmila-saini-271205380/" },
     { name: "Sunil Kumar", role: "M.Sc. AI & ML", photo: "/team-photos/Sunil.png", linkedin: "https://www.linkedin.com/in/sunil-kumar-ab174420a/" },
-    { name: "Sridip Basu", role: "M.Sc. AI & ML", photo: "/team-photos/sridip-basu.png", linkedin: "https://www.linkedin.com/in/sridip-basu/" },
     { name: "Samir Thakur", role: "M.Sc. AI & ML", photo: "/team-photos/samir.png", linkedin: "https://www.linkedin.com/in/samir-thakur-829162381/" },
     { name: "Manas Singh", role: "M.Sc. Data Science", photo: "/team-photos/Manas.png", linkedin: "https://www.linkedin.com/in/manas-singh-5b2001357/" },
     { name: "Laxmikanta Roy", role: "M.Sc. AI & ML", photo: "/team-photos/laxmikant.png", linkedin: "https://www.linkedin.com/in/laxmikanta-roy-329a6a363/" },
     { name: "Rupsa Roy", role: "M.Sc. Data Science", photo: "/team-photos/Rupsa.png", linkedin: "https://www.linkedin.com/in/rupsa-roy-848a89380/" },
-    { name: "Harsh Jain", role: "M.Sc. AI & ML", photo: "/team-photos/Harsh.png", linkedin: "https://www.linkedin.com/in/harshf9/" },
     { name: "Aishrica", role: "M.Sc. Data Science", photo: "/team-photos/Aishrica.png", linkedin: "https://www.linkedin.com/in/aishrica-dhiman-610b41294/" },
     { name: "Kamal Vasa", role: "M.Sc. AI & ML", photo: "/team-photos/Kamal.png", linkedin: "https://www.linkedin.com/in/kamalvasa/" },
     { name: "Shiva Singh", role: "M.Sc. Data Science", photo: "/team-photos/Shiva.png", linkedin: "https://www.linkedin.com/in/shiva-singh-b008aa36b/" },
@@ -31,6 +28,9 @@ const Team = () => {
     { name: "Anamitra Majumder", role: "2022-2026", photo: "/team-photos/Anamitra.jpg", linkedin: "https://www.linkedin.com/in/anamitra-majumder-b59b81330/" },
     { name: "Ana Afzal", role: "2022-2026", photo: "/team-photos/Ana.jpg", linkedin: "https://www.linkedin.com/in/ana-afzal-745896281/" },
     { name: "Susanta Baidya", role: "2023-2025", photo: "/team-photos/Susanta.jpg", linkedin: "https://www.linkedin.com/in/susanta-baidya-03436628a/" },
+    { name: "Sahil Rafaliya", role: "M.Sc. Data Science", photo: "/team-photos/sahil.png", linkedin: "https://www.linkedin.com/in/sahil-rafaliya-869210300/" },
+    { name: "Srishti Garg", role: "M.Sc. Data Science", photo: "/team-photos/srishti.jpg", linkedin: "https://www.linkedin.com/in/srishti-garg-6211a81ba/" },
+    { name: "Rajesh", role: "M.Sc. Data Science", photo: null, linkedin: "#" },
   ];
 
   const MemberCard = ({
