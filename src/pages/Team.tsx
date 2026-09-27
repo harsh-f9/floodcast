@@ -5,17 +5,16 @@ const Team = () => {
   const teamMembers = [
     { name: "Harsh Jain", role: "M.Sc. AI & ML", photo: "/team-photos/Harsh.png", linkedin: "https://www.linkedin.com/in/harshf9/" },
     { name: "Sridip Basu", role: "M.Sc. AI & ML", photo: "/team-photos/sridip-basu.png", linkedin: "https://www.linkedin.com/in/sridip-basu/" },
-    { name: "Debayan Bandyopadhyay", role: "M.Sc. Data Science", photo: "/team-photos/Debayan.png", linkedin: "https://www.linkedin.com/in/debayan-bandyopadhyay-734b66247/" },
-    { name: "Tarun Rai", role: "M.Sc. Data Science", photo: "/team-photos/Tarun.png", linkedin: "https://www.linkedin.com/in/tarunrai21/" },
     { name: "Gunjan", role: "M.Sc. Data Science", photo: "/team-photos/Gunjan.png", linkedin: "https://www.linkedin.com/in/gunjan-bansal-0b09a3251/" },
-    { name: "Rohit Kumar Meena", role: "M.Sc. Data Science", photo: "/team-photos/Rohit.png", linkedin: "https://www.linkedin.com/in/rohit-kumar-meena-b09133380/" },
+    { name: "Tarun Rai", role: "M.Sc. Data Science", photo: "/team-photos/Tarun.png", linkedin: "https://www.linkedin.com/in/tarunrai21/" },
+    { name: "Aishrica", role: "M.Sc. Data Science", photo: "/team-photos/Aishrica.png", linkedin: "https://www.linkedin.com/in/aishrica-dhiman-610b41294/" },
+    { name: "Debayan Bandyopadhyay", role: "M.Sc. Data Science", photo: "/team-photos/Debayan.png", linkedin: "https://www.linkedin.com/in/debayan-bandyopadhyay-734b66247/" },
     { name: "Urmila Saini", role: "M.Sc. Data Science", photo: "/team-photos/Urmilla.png", linkedin: "https://www.linkedin.com/in/urmila-saini-271205380/" },
     { name: "Sunil Kumar", role: "M.Sc. AI & ML", photo: "/team-photos/Sunil.png", linkedin: "https://www.linkedin.com/in/sunil-kumar-ab174420a/" },
     { name: "Samir Thakur", role: "M.Sc. AI & ML", photo: "/team-photos/samir.png", linkedin: "https://www.linkedin.com/in/samir-thakur-829162381/" },
     { name: "Manas Singh", role: "M.Sc. Data Science", photo: "/team-photos/Manas.png", linkedin: "https://www.linkedin.com/in/manas-singh-5b2001357/" },
     { name: "Laxmikanta Roy", role: "M.Sc. AI & ML", photo: "/team-photos/laxmikant.png", linkedin: "https://www.linkedin.com/in/laxmikanta-roy-329a6a363/" },
     { name: "Rupsa Roy", role: "M.Sc. Data Science", photo: "/team-photos/Rupsa.png", linkedin: "https://www.linkedin.com/in/rupsa-roy-848a89380/" },
-    { name: "Aishrica", role: "M.Sc. Data Science", photo: "/team-photos/Aishrica.png", linkedin: "https://www.linkedin.com/in/aishrica-dhiman-610b41294/" },
     { name: "Kamal Vasa", role: "M.Sc. AI & ML", photo: "/team-photos/Kamal.png", linkedin: "https://www.linkedin.com/in/kamalvasa/" },
     { name: "Shiva Singh", role: "M.Sc. Data Science", photo: "/team-photos/Shiva.png", linkedin: "https://www.linkedin.com/in/shiva-singh-b008aa36b/" },
     { name: "Arjun Mahesh", role: "M.Sc. AI & ML", photo: "/team-photos/Arjun.png", linkedin: "https://www.linkedin.com/in/arjun-mahesh-00a118382/" },
@@ -40,6 +39,7 @@ const Team = () => {
     subRole,
     showSocials = false,
     linkedin = "#",
+    large = false,
   }: {
     name: string;
     role: string;
@@ -47,10 +47,11 @@ const Team = () => {
     subRole?: string;
     showSocials?: boolean;
     linkedin?: string;
+    large?: boolean;
   }) => (
-    <Card className="p-8 border border-gray-100 shadow-lg rounded-2xl hover:shadow-xl transition-all group flex flex-col items-center text-center bg-white">
+    <Card className={`${large ? "p-10" : "p-8"} border border-gray-100 shadow-lg rounded-2xl hover:shadow-xl transition-all group flex flex-col items-center text-center bg-white`}>
       <div className="mb-6 relative">
-        <div className="w-32 h-32 overflow-hidden rounded-full border-4 border-white shadow-md group-hover:border-un-blue transition-colors bg-gray-50 flex items-center justify-center">
+        <div className={`${large ? "w-40 h-40" : "w-32 h-32"} overflow-hidden rounded-full border-4 border-white shadow-md group-hover:border-un-blue transition-colors bg-gray-50 flex items-center justify-center`}>
           {photo ? (
             <img
               src={photo}
@@ -58,11 +59,11 @@ const Team = () => {
               className="w-full h-full object-cover"
             />
           ) : (
-            <User className="h-16 w-16 text-gray-300" />
+            <User className={`${large ? "h-20 w-20" : "h-16 w-16"} text-gray-300`} />
           )}
         </div>
       </div>
-      <h3 className="font-bold text-xl text-gray-900 mb-2 tracking-tight">{name}</h3>
+      <h3 className={`font-bold ${large ? "text-2xl" : "text-xl"} text-gray-900 mb-2 tracking-tight`}>{name}</h3>
       <p className="text-sm text-gray-600 font-medium leading-tight mb-1">{role}</p>
       {subRole && (
         <p className="text-sm text-gray-400 font-medium">{subRole}</p>
@@ -151,10 +152,24 @@ const Team = () => {
             <div className="w-20 h-1 bg-un-blue"></div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-            {teamMembers.map((member, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+            {teamMembers.slice(0, 5).map((member, index) => (
               <MemberCard
                 key={index}
+                name={member.name}
+                role={member.role}
+                photo={member.photo}
+                linkedin={member.linkedin}
+                showSocials={true}
+                large={true}
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+            {teamMembers.slice(5).map((member, index) => (
+              <MemberCard
+                key={index + 5}
                 name={member.name}
                 role={member.role}
                 photo={member.photo}
